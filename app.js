@@ -19,7 +19,7 @@ import {
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore.js";
 
-// --- PASTE YOUR FIREBASE WEB CONFIG HERE ---
+// --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyDRWwNScrVRg7bv3SrNLkPfcfa3xpdyJMg",
   authDomain: "gen-lang-client-0194737155.firebaseapp.com",
@@ -30,158 +30,402 @@ const firebaseConfig = {
   measurementId: "G-Z8PVPNFN6S"
 };
 
-// Initialize Services
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// DOM References
-const loginBtn = document.getElementById("loginBtn");
-const heroLoginBtn = document.getElementById("heroLoginBtn");
+// State
+let currentUser = null;
+let userPrograms = [];
+let unsubscribe = null;
+let pendingFileCode = "";
+let viewingDocId = null;
+
+const defaultLanguages = [
+  { name: "C", ext: "c", icon: "⚙️" },
+  { name: "Python", ext: "py", icon: "🐍" },
+  { name: "Java", ext: "java", icon: "☕" },
+  { name: "HTML", ext: "html", icon: "🌐" },
+  { name: "CSS", ext: "css", icon: "🎨" }
+];
+
+// DOM Elements
+const landing = document.getElementById("landing");
+const appSection = document.getElementById("app");
+const openLoginBtn = document.getElementById("openLoginBtn");
+const authModal = document.getElementById("authModal");
+const googleSignInBtn = document.getElementById("googleSignInBtn");
+const authError = document.getElementById("authError");
 const logoutBtn = document.getElementById("logoutBtn");
-const userProfile = document.getElementById("userProfile");
-const userName = document.getElementById("userName");
+const displayName = document.getElementById("displayName");
 const userAvatar = document.getElementById("userAvatar");
-const guestHero = document.getElementById("guestHero");
-const dashboard = document.getElementById("dashboard");
-const projectForm = document.getElementById("projectForm");
-const projectList = document.getElementById("projectList");
-const recordCount = document.getElementById("recordCount");
-const loadingIndicator = document.getElementById("loadingIndicator");
+const defaultAvatar = document.getElementById("defaultAvatar");
+const themeToggle = document.getElementById("themeToggle");
+const themeIcon = document.getElementById("themeIcon");
 
-let unsubscribeSnapshot = null;
+// Modals
+const metaModal = document.getElementById("metaModal");
+const viewerModal = document.getElementById("viewerModal");
+const langModal = document.getElementById("langModal");
+const metaForm = document.getElementById("metaForm");
+const progLang = document.getElementById("progLang");
+const viewerTitle = document.getElementById("viewerTitle");
+const viewerCode = document.getElementById("viewerCode");
+const deleteCodeBtn = document.getElementById("deleteCodeBtn");
+const copyCodeBtn = document.getElementById("copyCodeBtn");
 
-// Sanitize user inputs to prevent Cross-Site Scripting (XSS)
-function sanitizeText(str) {
-  const temp = document.createElement("div");
-  temp.textContent = str;
-  return temp.innerHTML;
-}
+// Drag & Drop
+const dropZone = document.getElementById("dropZone");
+const browseBtn = document.getElementById("browseBtn");
+const fileInput = document.getElementById("fileInput");
 
-// Authentication Actions
-async function handleLogin() {
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (error) {
-    alert("Authentication failed: " + error.message);
+// --- AUDIO PLAYER (Web Audio API Synthesizer - No External Assets Needed) ---
+let audioCtx = null;
+let isPlaying = false;
+let isMuted = false;
+let gainNode = null;
+let osc = null;
+
+const playPauseBtn = document.getElementById("playPauseBtn");
+const playIcon = document.getElementById("playIcon");
+const muteBtn = document.getElementById("muteBtn");
+const muteIcon = document.getElementById("muteIcon");
+const volumeSlider = document.getElementById("volumeSlider");
+const waveVisualizer = document.getElementById("waveVisualizer");
+
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = volumeSlider.value;
+    gainNode.connect(audioCtx.destination);
   }
 }
 
-async function handleLogout() {
-  try {
-    if (unsubscribeSnapshot) unsubscribeSnapshot();
-    await signOut(auth);
-  } catch (error) {
-    alert("Sign out failed: " + error.message);
-  }
-}
-
-loginBtn.addEventListener("click", handleLogin);
-heroLoginBtn.addEventListener("click", handleLogin);
-logoutBtn.addEventListener("click", handleLogout);
-
-// Listen to Auth State Changes
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    // Render Authenticated State
-    guestHero.classList.add("hidden");
-    dashboard.classList.remove("hidden");
-    userProfile.classList.remove("hidden");
-    loginBtn.classList.add("hidden");
-
-    userName.textContent = user.displayName || user.email;
-    userAvatar.src = user.photoURL || "https://api.dicebear.com/7.x/identicon/svg?seed=" + user.uid;
-
-    loadUserData(user.uid);
+playPauseBtn.addEventListener("click", () => {
+  initAudio();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+  
+  if (!isPlaying) {
+    osc = audioCtx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(220, audioCtx.currentTime); // Soft A3 ambient drone
+    osc.connect(gainNode);
+    osc.start();
+    isPlaying = true;
+    playIcon.textContent = "⏸";
+    waveVisualizer.classList.add("playing");
   } else {
-    // Render Guest State
-    guestHero.classList.remove("hidden");
-    dashboard.classList.add("hidden");
-    userProfile.classList.add("hidden");
-    loginBtn.classList.remove("hidden");
-    projectList.innerHTML = "";
-    recordCount.textContent = "0 entries";
+    if (osc) osc.stop();
+    isPlaying = false;
+    playIcon.textContent = "▶";
+    waveVisualizer.classList.remove("playing");
   }
 });
 
-// Real-time Isolated Data Loader
-function loadUserData(userId) {
-  loadingIndicator.classList.remove("hidden");
-  
-  // Scoped strictly to the authenticated user's ID
+volumeSlider.addEventListener("input", (e) => {
+  if (gainNode) gainNode.gain.value = isMuted ? 0 : e.target.value;
+});
+
+muteBtn.addEventListener("click", () => {
+  isMuted = !isMuted;
+  if (gainNode) gainNode.gain.value = isMuted ? 0 : volumeSlider.value;
+  muteIcon.textContent = isMuted ? "🔇" : "🔊";
+});
+
+// --- THEME TOGGLE ---
+themeToggle.addEventListener("click", () => {
+  document.body.classList.toggle("dark-mode");
+  const isDark = document.body.classList.contains("dark-mode");
+  themeIcon.textContent = isDark ? "☀️" : "🌙";
+});
+
+// --- MODAL CONTROLS ---
+document.querySelectorAll("[data-close]").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.getElementById(btn.dataset.close).classList.add("hidden");
+  });
+});
+
+openLoginBtn.addEventListener("click", () => authModal.classList.remove("hidden"));
+
+// --- GOOGLE AUTHENTICATION ---
+googleSignInBtn.addEventListener("click", async () => {
+  try {
+    authError.classList.add("hidden");
+    await signInWithPopup(auth, provider);
+    authModal.classList.add("hidden");
+  } catch (err) {
+    authError.textContent = err.message;
+    authError.classList.remove("hidden");
+  }
+});
+
+logoutBtn.addEventListener("click", async () => {
+  if (unsubscribe) unsubscribe();
+  await signOut(auth);
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (user) {
+    currentUser = user;
+    landing.classList.add("hidden");
+    appSection.classList.remove("hidden");
+
+    displayName.textContent = user.displayName || user.email.split("@")[0];
+    if (user.photoURL) {
+      userAvatar.src = user.photoURL;
+      userAvatar.style.display = "block";
+      defaultAvatar.style.display = "none";
+    }
+
+    populateLangSelect();
+    listenToUserData(user.uid);
+  } else {
+    currentUser = null;
+    userPrograms = [];
+    landing.classList.remove("hidden");
+    appSection.classList.add("hidden");
+  }
+});
+
+// --- FIRESTORE USER ISOLATION ---
+function listenToUserData(userId) {
   const q = query(
-    collection(db, "projects"),
+    collection(db, "programs"),
     where("userId", "==", userId),
     orderBy("createdAt", "desc")
   );
 
-  unsubscribeSnapshot = onSnapshot(q, (snapshot) => {
-    loadingIndicator.classList.add("hidden");
-    projectList.innerHTML = "";
-    recordCount.textContent = `${snapshot.size} entries`;
-
-    if (snapshot.empty) {
-      projectList.innerHTML = `<p style="color: var(--text-muted); margin-top: 1rem;">No records saved yet. Create your first one above!</p>`;
-      return;
-    }
-
-    snapshot.forEach((docItem) => {
-      const data = docItem.data();
-      const div = document.createElement("div");
-      div.className = "project-item";
-      div.innerHTML = `
-        <div>
-          <span class="project-tag">${sanitizeText(data.category)}</span>
-          <h3>${sanitizeText(data.title)}</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem;">${sanitizeText(data.description)}</p>
-        </div>
-        <button class="btn btn-danger" data-id="${docItem.id}">Delete</button>
-      `;
-
-      div.querySelector(".btn-danger").addEventListener("click", () => {
-        deleteProject(docItem.id);
-      });
-
-      projectList.appendChild(div);
-    });
-  }, (error) => {
-    loadingIndicator.classList.add("hidden");
-    console.error("Firestore access error:", error);
+  unsubscribe = onSnapshot(q, (snapshot) => {
+    userPrograms = [];
+    snapshot.forEach((d) => userPrograms.push({ id: d.id, ...d.data() }));
+    updateUI();
+  }, (err) => {
+    console.error("Firestore Error:", err);
   });
 }
 
-// Add Item
-projectForm.addEventListener("submit", async (e) => {
+function sanitize(text) {
+  const div = document.createElement("div");
+  div.textContent = text || "";
+  return div.innerHTML;
+}
+
+// --- DASHBOARD & STATS UPDATE ---
+function updateUI() {
+  document.getElementById("totalPrograms").textContent = userPrograms.length;
+  
+  const uniqueLangs = new Set(userPrograms.map((p) => p.lang)).size;
+  document.getElementById("totalLanguages").textContent = uniqueLangs;
+
+  const mastery = Math.min(100, Math.round((userPrograms.length / 100) * 100));
+  document.getElementById("masteryPercent").textContent = `${mastery}%`;
+  document.getElementById("masteryBar").style.width = `${mastery}%`;
+  document.getElementById("masteryText").textContent = userPrograms.length;
+  document.getElementById("circlePercent").textContent = `${mastery}%`;
+  
+  const circleOffset = 326.7 - (326.7 * mastery) / 100;
+  document.getElementById("circleFill").style.strokeDashoffset = circleOffset;
+
+  // Recent list
+  const recentList = document.getElementById("recentList");
+  recentList.innerHTML = "";
+  userPrograms.slice(0, 5).forEach((prog) => {
+    const li = document.createElement("li");
+    li.innerHTML = `
+      <span><strong>${sanitize(prog.title)}</strong> (${sanitize(prog.lang)})</span>
+      <span class="recent-meta">Sem ${prog.semester}</span>
+    `;
+    li.addEventListener("click", () => openViewer(prog));
+    recentList.appendChild(li);
+  });
+
+  // Render Upload Tab List
+  const uploadList = document.getElementById("uploadList");
+  uploadList.innerHTML = "";
+  userPrograms.forEach((p) => {
+    const item = document.createElement("div");
+    item.className = "upload-item neo-raised";
+    item.innerHTML = `
+      <div class="upload-info">
+        <h4>${sanitize(p.title)}</h4>
+        <span>${sanitize(p.topic)} • ${sanitize(p.lang)} • Semester ${p.semester}</span>
+      </div>
+      <button class="neo-btn">View Code</button>
+    `;
+    item.querySelector("button").addEventListener("click", () => openViewer(p));
+    uploadList.appendChild(item);
+  });
+
+  renderLanguages();
+  renderHeatmap();
+  renderSemesters();
+}
+
+// --- TABS ---
+document.querySelectorAll(".nav-tabs .tab").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-tabs .tab").forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+    btn.classList.add("pressed");
+    setTimeout(() => btn.classList.remove("pressed"), 200);
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
+  });
+});
+
+// --- LANGUAGES ---
+function populateLangSelect() {
+  progLang.innerHTML = "";
+  defaultLanguages.forEach((l) => {
+    const opt = document.createElement("option");
+    opt.value = l.name;
+    opt.textContent = l.name;
+    progLang.appendChild(opt);
+  });
+}
+
+function renderLanguages() {
+  const carousel = document.getElementById("languageCarousel");
+  const grid = document.getElementById("languageGrid");
+  carousel.innerHTML = "";
+  grid.innerHTML = "";
+
+  defaultLanguages.forEach((lang) => {
+    const count = userPrograms.filter((p) => p.lang.toLowerCase() === lang.name.toLowerCase()).length;
+    const card = document.createElement("div");
+    card.className = "lang-card neo-raised";
+    card.innerHTML = `
+      <div class="lang-icon">${lang.icon}</div>
+      <h4>${lang.name}</h4>
+      <div class="lang-stats">
+        <span>${count} Programs</span>
+      </div>
+    `;
+    carousel.appendChild(card);
+    grid.appendChild(card.cloneNode(true));
+  });
+}
+
+// --- FILE UPLOADS ---
+browseBtn.addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) handleFileRead(file);
+});
+
+dropZone.addEventListener("dragover", (e) => {
   e.preventDefault();
-  const user = auth.currentUser;
-  if (!user) return;
+  dropZone.classList.add("drag-over");
+});
 
-  const title = document.getElementById("projectTitle").value.trim();
-  const category = document.getElementById("projectCategory").value;
-  const description = document.getElementById("projectDescription").value.trim();
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
 
-  if (!title || !description) return;
+dropZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropZone.classList.remove("drag-over");
+  if (e.dataTransfer.files.length) handleFileRead(e.dataTransfer.files[0]);
+});
+
+function handleFileRead(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    pendingFileCode = e.target.result;
+    document.getElementById("progTitle").value = file.name.replace(/\.[^/.]+$/, "");
+    metaModal.classList.remove("hidden");
+  };
+  reader.readAsText(file);
+}
+
+// --- SAVE PROGRAM TO FIRESTORE ---
+metaForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!currentUser) return;
+
+  const title = document.getElementById("progTitle").value.trim();
+  const topic = document.getElementById("progTopic").value.trim();
+  const semester = parseInt(document.getElementById("progSemester").value, 10);
+  const lang = document.getElementById("progLang").value;
 
   try {
-    await addDoc(collection(db, "projects"), {
-      userId: user.uid,
-      title: title,
-      category: category,
-      description: description,
+    await addDoc(collection(db, "programs"), {
+      userId: currentUser.uid,
+      title,
+      topic,
+      semester,
+      lang,
+      code: pendingFileCode || "// No raw code uploaded",
       createdAt: serverTimestamp()
     });
-    projectForm.reset();
-  } catch (error) {
-    alert("Error saving record: " + error.message);
+
+    metaModal.classList.add("hidden");
+    metaForm.reset();
+    pendingFileCode = "";
+  } catch (err) {
+    alert("Save error: " + err.message);
   }
 });
 
-// Delete Item
-async function deleteProject(id) {
-  try {
-    await deleteDoc(doc(db, "projects", id));
-  } catch (error) {
-    alert("Error deleting record: " + error.message);
+// --- CODE VIEWER ---
+function openViewer(prog) {
+  viewingDocId = prog.id;
+  viewerTitle.textContent = `${prog.title} (${prog.lang})`;
+  viewerCode.textContent = prog.code;
+  viewerCode.className = `language-${prog.lang.toLowerCase()}`;
+  if (window.Prism) Prism.highlightElement(viewerCode);
+  viewerModal.classList.remove("hidden");
+}
+
+copyCodeBtn.addEventListener("click", () => {
+  navigator.clipboard.writeText(viewerCode.textContent);
+  copyCodeBtn.textContent = "Copied!";
+  setTimeout(() => (copyCodeBtn.textContent = "Copy"), 1500);
+});
+
+deleteCodeBtn.addEventListener("click", async () => {
+  if (viewingDocId && confirm("Delete this program?")) {
+    await deleteDoc(doc(db, "programs", viewingDocId));
+    viewerModal.classList.add("hidden");
+  }
+});
+
+// --- HEATMAP & JOURNEY ---
+function renderHeatmap() {
+  const heatmap = document.getElementById("heatmap");
+  heatmap.innerHTML = "";
+  for (let i = 0; i < 52 * 7; i++) {
+    const cell = document.createElement("div");
+    cell.className = "heat-cell";
+    if (i % 9 === 0 && userPrograms.length > 0) cell.classList.add("l1");
+    if (i % 25 === 0 && userPrograms.length > 2) cell.classList.add("l3");
+    heatmap.appendChild(cell);
+  }
+}
+
+function renderSemesters() {
+  const milestones = document.getElementById("semesterMilestones");
+  const cards = document.getElementById("semesterCards");
+  milestones.innerHTML = "";
+  cards.innerHTML = "";
+
+  for (let sem = 1; sem <= 8; sem++) {
+    const count = userPrograms.filter((p) => p.semester === sem).length;
+    
+    const ms = document.createElement("div");
+    ms.className = `milestone ${count > 0 ? "done" : ""}`;
+    ms.textContent = `Sem ${sem}: ${count}`;
+    milestones.appendChild(ms);
+
+    const sc = document.createElement("div");
+    sc.className = "sem-card neo-raised";
+    sc.innerHTML = `
+      <h4>Semester ${sem}</h4>
+      <div class="count">${count}</div>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">programs logged</p>
+    `;
+    cards.appendChild(sc);
   }
 }
