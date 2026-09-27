@@ -867,6 +867,7 @@
       <button id="logoutBtn" class="neo-btn danger">Logout</button>
     </header>
 
+    <!-- Dashboard Tab -->
     <section id="dashboard" class="tab-panel active">
       <div class="stats-grid">
         <div class="stat-card neo-raised">
@@ -899,6 +900,7 @@
       </div>
     </section>
 
+    <!-- Languages Tab -->
     <section id="languages" class="tab-panel">
       <h2 class="section-title">Language Explorer</h2>
       <div class="carousel-wrap">
@@ -908,8 +910,18 @@
       </div>
       <button id="addLanguageBtn" class="neo-btn primary add-lang-btn">+ Add Language</button>
       <div id="languageGrid" class="language-grid"></div>
+
+      <!-- Filtered Language Programs View -->
+      <div id="langFilteredSection" class="neo-raised hidden" style="margin-top: 32px; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+          <h3 id="selectedLangTitle" style="font-size: 1.25rem;">Programs</h3>
+          <button id="closeLangFilterBtn" class="neo-btn">Show All</button>
+        </div>
+        <div id="langFilteredList" class="upload-list"></div>
+      </div>
     </section>
 
+    <!-- Upload Tab -->
     <section id="upload" class="tab-panel">
       <h2 class="section-title">Drag & Drop Code Upload</h2>
       <div id="dropZone" class="drop-zone neo-inset">
@@ -924,6 +936,7 @@
       <div id="uploadList" class="upload-list"></div>
     </section>
 
+    <!-- Journey Tracker Tab -->
     <section id="tracker" class="tab-panel">
       <h2 class="section-title">100% 4-Year Journey Tracker</h2>
       <div class="journey-progress neo-raised">
@@ -953,6 +966,7 @@
     </section>
   </main>
 
+  <!-- Upload Meta Modal -->
   <div id="metaModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised">
@@ -989,6 +1003,7 @@
     </div>
   </div>
 
+  <!-- Code Viewer Modal -->
   <div id="viewerModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised viewer-content">
@@ -1004,6 +1019,7 @@
     </div>
   </div>
 
+  <!-- Add Language Modal -->
   <div id="langModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised">
