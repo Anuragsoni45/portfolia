@@ -40,6 +40,7 @@ let userPrograms = [];
 let unsubscribe = null;
 let pendingFileCode = "";
 let viewingDocId = null;
+let activeLanguageFilter = null;
 
 let languagesList = [
   { name: "C", ext: "c", icon: "⚙️" },
@@ -49,7 +50,7 @@ let languagesList = [
   { name: "CSS", ext: "css", icon: "🎨" }
 ];
 
-// Load user's custom saved languages from local storage
+// Load user's custom saved languages
 const savedCustomLangs = localStorage.getItem("custom_languages");
 if (savedCustomLangs) {
   try {
@@ -73,7 +74,7 @@ const defaultAvatar = document.getElementById("defaultAvatar");
 const themeToggle = document.getElementById("themeToggle");
 const themeIcon = document.getElementById("themeIcon");
 
-// Modals & Controls
+// Modals & Forms
 const metaModal = document.getElementById("metaModal");
 const viewerModal = document.getElementById("viewerModal");
 const langModal = document.getElementById("langModal");
@@ -85,6 +86,12 @@ const viewerCode = document.getElementById("viewerCode");
 const deleteCodeBtn = document.getElementById("deleteCodeBtn");
 const copyCodeBtn = document.getElementById("copyCodeBtn");
 const addLanguageBtn = document.getElementById("addLanguageBtn");
+
+// Filter View Elements
+const langFilteredSection = document.getElementById("langFilteredSection");
+const selectedLangTitle = document.getElementById("selectedLangTitle");
+const langFilteredList = document.getElementById("langFilteredList");
+const closeLangFilterBtn = document.getElementById("closeLangFilterBtn");
 
 // Drag & Drop
 const dropZone = document.getElementById("dropZone");
@@ -105,7 +112,7 @@ if (carouselPrev && carouselNext && carousel) {
   });
 }
 
-// --- AUDIO PLAYER (Web Audio Synthesizer) ---
+// --- AUDIO PLAYER (Web Audio API Synthesizer) ---
 let audioCtx = null;
 let isPlaying = false;
 let isMuted = false;
@@ -177,8 +184,8 @@ if (themeToggle) {
 // --- MODAL CONTROLS ---
 document.querySelectorAll("[data-close]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    const targetModal = document.getElementById(btn.dataset.close);
-    if (targetModal) targetModal.classList.add("hidden");
+    const target = document.getElementById(btn.dataset.close);
+    if (target) target.classList.add("hidden");
   });
 });
 
@@ -186,7 +193,7 @@ if (openLoginBtn) {
   openLoginBtn.addEventListener("click", () => authModal.classList.remove("hidden"));
 }
 
-// --- ADD LANGUAGE BUTTON & MODAL HANDLER ---
+// --- ADD LANGUAGE ---
 if (addLanguageBtn) {
   addLanguageBtn.addEventListener("click", () => {
     if (langModal) langModal.classList.remove("hidden");
@@ -198,13 +205,11 @@ if (langForm) {
     e.preventDefault();
     const nameInput = document.getElementById("newLangName");
     const extInput = document.getElementById("newLangExt");
-    
     const name = nameInput.value.trim();
     const ext = extInput.value.trim().toLowerCase().replace(".", "");
 
     if (!name) return;
 
-    // Check if it already exists
     if (!languagesList.some((l) => l.name.toLowerCase() === name.toLowerCase())) {
       languagesList.push({
         name: name,
@@ -216,7 +221,6 @@ if (langForm) {
 
     populateLangSelect();
     renderLanguages();
-
     langForm.reset();
     langModal.classList.add("hidden");
   });
@@ -269,7 +273,6 @@ onAuthStateChanged(auth, (user) => {
 
 // --- FIRESTORE USER ISOLATION ---
 function listenToUserData(userId) {
-  // Querying by userId without strict composite order requirements to avoid indexing failures
   const q = query(
     collection(db, "programs"),
     where("userId", "==", userId)
@@ -279,7 +282,6 @@ function listenToUserData(userId) {
     userPrograms = [];
     snapshot.forEach((d) => userPrograms.push({ id: d.id, ...d.data() }));
 
-    // Sort in memory by createdAt descending
     userPrograms.sort((a, b) => {
       const timeA = a.createdAt?.seconds || 0;
       const timeB = b.createdAt?.seconds || 0;
@@ -296,6 +298,52 @@ function sanitize(text) {
   const div = document.createElement("div");
   div.textContent = text || "";
   return div.innerHTML;
+}
+
+// --- LANGUAGE FILTER HANDLERS ---
+function selectLanguage(langName) {
+  activeLanguageFilter = langName;
+  if (!langFilteredSection || !selectedLangTitle || !langFilteredList) return;
+
+  const matched = userPrograms.filter(
+    (p) => (p.lang || "").toLowerCase() === langName.toLowerCase()
+  );
+
+  selectedLangTitle.textContent = `${langName} Programs (${matched.length})`;
+  langFilteredList.innerHTML = "";
+
+  if (matched.length === 0) {
+    langFilteredList.innerHTML = `
+      <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+        No programs uploaded in <strong>${sanitize(langName)}</strong> yet. 
+        Head over to the <strong>Upload</strong> tab to add one!
+      </div>
+    `;
+  } else {
+    matched.forEach((p) => {
+      const item = document.createElement("div");
+      item.className = "upload-item neo-raised";
+      item.innerHTML = `
+        <div class="upload-info">
+          <h4>${sanitize(p.title)}</h4>
+          <span>${sanitize(p.topic)} • Semester ${p.semester}</span>
+        </div>
+        <button class="neo-btn primary">View Code</button>
+      `;
+      item.querySelector("button").addEventListener("click", () => openViewer(p));
+      langFilteredList.appendChild(item);
+    });
+  }
+
+  langFilteredSection.classList.remove("hidden");
+  langFilteredSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+if (closeLangFilterBtn) {
+  closeLangFilterBtn.addEventListener("click", () => {
+    activeLanguageFilter = null;
+    if (langFilteredSection) langFilteredSection.classList.add("hidden");
+  });
 }
 
 // --- DASHBOARD & STATS UPDATE ---
@@ -369,6 +417,7 @@ function updateUI() {
   }
 
   renderLanguages();
+  if (activeLanguageFilter) selectLanguage(activeLanguageFilter);
   renderHeatmap();
   renderSemesters();
 }
@@ -386,7 +435,7 @@ document.querySelectorAll(".nav-tabs .tab").forEach((btn) => {
   });
 });
 
-// --- LANGUAGES RENDER & SYNC ---
+// --- RENDER LANGUAGES WITH CLICK HANDLERS ---
 function populateLangSelect() {
   if (!progLang) return;
   progLang.innerHTML = "";
@@ -409,17 +458,24 @@ function renderLanguages() {
   languagesList.forEach((lang) => {
     const count = userPrograms.filter((p) => (p.lang || "").toLowerCase() === lang.name.toLowerCase()).length;
     
-    const card = document.createElement("div");
-    card.className = "lang-card neo-raised";
-    card.innerHTML = `
-      <div class="lang-icon">${lang.icon}</div>
-      <h4>${sanitize(lang.name)}</h4>
-      <div class="lang-stats">
-        <span>${count} Programs</span>
-      </div>
-    `;
-    carouselElem.appendChild(card);
-    gridElem.appendChild(card.cloneNode(true));
+    // Create card element
+    const createCard = () => {
+      const card = document.createElement("div");
+      card.className = "lang-card neo-raised";
+      card.style.cursor = "pointer";
+      card.innerHTML = `
+        <div class="lang-icon">${lang.icon}</div>
+        <h4>${sanitize(lang.name)}</h4>
+        <div class="lang-stats">
+          <span>${count} Programs</span>
+        </div>
+      `;
+      card.addEventListener("click", () => selectLanguage(lang.name));
+      return card;
+    };
+
+    carouselElem.appendChild(createCard());
+    gridElem.appendChild(createCard());
   });
 }
 
@@ -433,7 +489,7 @@ if (browseBtn && fileInput) {
   fileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (file) handleFileRead(file);
-    fileInput.value = ""; // Clear so subsequent uploads of same file re-trigger
+    fileInput.value = "";
   });
 }
 
@@ -463,7 +519,6 @@ function handleFileRead(file) {
     document.getElementById("progTitle").value = cleanName;
     document.getElementById("progTopic").value = "General Assignment";
 
-    // Auto-match language by extension
     const ext = file.name.split(".").pop().toLowerCase();
     const matched = languagesList.find((l) => (l.ext || "").toLowerCase() === ext);
     if (matched && progLang) {
@@ -475,7 +530,7 @@ function handleFileRead(file) {
   reader.readAsText(file);
 }
 
-// --- SAVE PROGRAM TO FIRESTORE ---
+// --- SAVE TO FIRESTORE ---
 if (metaForm) {
   metaForm.addEventListener("submit", async (e) => {
     e.preventDefault();
