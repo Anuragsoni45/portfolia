@@ -21,12 +21,13 @@ import {
 
 // --- PASTE YOUR FIREBASE WEB CONFIG HERE ---
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDRWwNScrVRg7bv3SrNLkPfcfa3xpdyJMg",
+  authDomain: "gen-lang-client-0194737155.firebaseapp.com",
+  projectId: "gen-lang-client-0194737155",
+  storageBucket: "gen-lang-client-0194737155.firebasestorage.app",
+  messagingSenderId: "320756767536",
+  appId: "1:320756767536:web:2c9fce5e45a38a6363c6f5",
+  measurementId: "G-Z8PVPNFN6S"
 };
 
 // Initialize Services
