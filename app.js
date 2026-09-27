@@ -12,7 +12,6 @@ import {
   addDoc, 
   query, 
   where, 
-  orderBy, 
   onSnapshot, 
   deleteDoc, 
   doc, 
@@ -42,13 +41,23 @@ let unsubscribe = null;
 let pendingFileCode = "";
 let viewingDocId = null;
 
-const defaultLanguages = [
+let languagesList = [
   { name: "C", ext: "c", icon: "⚙️" },
   { name: "Python", ext: "py", icon: "🐍" },
   { name: "Java", ext: "java", icon: "☕" },
   { name: "HTML", ext: "html", icon: "🌐" },
   { name: "CSS", ext: "css", icon: "🎨" }
 ];
+
+// Load user's custom saved languages from local storage
+const savedCustomLangs = localStorage.getItem("custom_languages");
+if (savedCustomLangs) {
+  try {
+    languagesList = JSON.parse(savedCustomLangs);
+  } catch (e) {
+    console.error("Failed to parse stored languages", e);
+  }
+}
 
 // DOM Elements
 const landing = document.getElementById("landing");
@@ -64,23 +73,39 @@ const defaultAvatar = document.getElementById("defaultAvatar");
 const themeToggle = document.getElementById("themeToggle");
 const themeIcon = document.getElementById("themeIcon");
 
-// Modals
+// Modals & Controls
 const metaModal = document.getElementById("metaModal");
 const viewerModal = document.getElementById("viewerModal");
 const langModal = document.getElementById("langModal");
 const metaForm = document.getElementById("metaForm");
+const langForm = document.getElementById("langForm");
 const progLang = document.getElementById("progLang");
 const viewerTitle = document.getElementById("viewerTitle");
 const viewerCode = document.getElementById("viewerCode");
 const deleteCodeBtn = document.getElementById("deleteCodeBtn");
 const copyCodeBtn = document.getElementById("copyCodeBtn");
+const addLanguageBtn = document.getElementById("addLanguageBtn");
 
 // Drag & Drop
 const dropZone = document.getElementById("dropZone");
 const browseBtn = document.getElementById("browseBtn");
 const fileInput = document.getElementById("fileInput");
 
-// --- AUDIO PLAYER (Web Audio API Synthesizer - No External Assets Needed) ---
+// Carousel Controls
+const carousel = document.getElementById("languageCarousel");
+const carouselPrev = document.getElementById("carouselPrev");
+const carouselNext = document.getElementById("carouselNext");
+
+if (carouselPrev && carouselNext && carousel) {
+  carouselPrev.addEventListener("click", () => {
+    carousel.scrollBy({ left: -220, behavior: "smooth" });
+  });
+  carouselNext.addEventListener("click", () => {
+    carousel.scrollBy({ left: 220, behavior: "smooth" });
+  });
+}
+
+// --- AUDIO PLAYER (Web Audio Synthesizer) ---
 let audioCtx = null;
 let isPlaying = false;
 let isMuted = false;
@@ -103,107 +128,167 @@ function initAudio() {
   }
 }
 
-playPauseBtn.addEventListener("click", () => {
-  initAudio();
-  if (audioCtx.state === "suspended") audioCtx.resume();
-  
-  if (!isPlaying) {
-    osc = audioCtx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(220, audioCtx.currentTime); // Soft A3 ambient drone
-    osc.connect(gainNode);
-    osc.start();
-    isPlaying = true;
-    playIcon.textContent = "⏸";
-    waveVisualizer.classList.add("playing");
-  } else {
-    if (osc) osc.stop();
-    isPlaying = false;
-    playIcon.textContent = "▶";
-    waveVisualizer.classList.remove("playing");
-  }
-});
+if (playPauseBtn) {
+  playPauseBtn.addEventListener("click", () => {
+    initAudio();
+    if (audioCtx.state === "suspended") audioCtx.resume();
+    
+    if (!isPlaying) {
+      osc = audioCtx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+      osc.connect(gainNode);
+      osc.start();
+      isPlaying = true;
+      playIcon.textContent = "⏸";
+      waveVisualizer.classList.add("playing");
+    } else {
+      if (osc) osc.stop();
+      isPlaying = false;
+      playIcon.textContent = "▶";
+      waveVisualizer.classList.remove("playing");
+    }
+  });
+}
 
-volumeSlider.addEventListener("input", (e) => {
-  if (gainNode) gainNode.gain.value = isMuted ? 0 : e.target.value;
-});
+if (volumeSlider) {
+  volumeSlider.addEventListener("input", (e) => {
+    if (gainNode) gainNode.gain.value = isMuted ? 0 : e.target.value;
+  });
+}
 
-muteBtn.addEventListener("click", () => {
-  isMuted = !isMuted;
-  if (gainNode) gainNode.gain.value = isMuted ? 0 : volumeSlider.value;
-  muteIcon.textContent = isMuted ? "🔇" : "🔊";
-});
+if (muteBtn) {
+  muteBtn.addEventListener("click", () => {
+    isMuted = !isMuted;
+    if (gainNode) gainNode.gain.value = isMuted ? 0 : volumeSlider.value;
+    muteIcon.textContent = isMuted ? "🔇" : "🔊";
+  });
+}
 
 // --- THEME TOGGLE ---
-themeToggle.addEventListener("click", () => {
-  document.body.classList.toggle("dark-mode");
-  const isDark = document.body.classList.contains("dark-mode");
-  themeIcon.textContent = isDark ? "☀️" : "🌙";
-});
+if (themeToggle) {
+  themeToggle.addEventListener("click", () => {
+    document.body.classList.toggle("dark-mode");
+    const isDark = document.body.classList.contains("dark-mode");
+    themeIcon.textContent = isDark ? "☀️" : "🌙";
+  });
+}
 
 // --- MODAL CONTROLS ---
 document.querySelectorAll("[data-close]").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.getElementById(btn.dataset.close).classList.add("hidden");
+    const targetModal = document.getElementById(btn.dataset.close);
+    if (targetModal) targetModal.classList.add("hidden");
   });
 });
 
-openLoginBtn.addEventListener("click", () => authModal.classList.remove("hidden"));
+if (openLoginBtn) {
+  openLoginBtn.addEventListener("click", () => authModal.classList.remove("hidden"));
+}
+
+// --- ADD LANGUAGE BUTTON & MODAL HANDLER ---
+if (addLanguageBtn) {
+  addLanguageBtn.addEventListener("click", () => {
+    if (langModal) langModal.classList.remove("hidden");
+  });
+}
+
+if (langForm) {
+  langForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const nameInput = document.getElementById("newLangName");
+    const extInput = document.getElementById("newLangExt");
+    
+    const name = nameInput.value.trim();
+    const ext = extInput.value.trim().toLowerCase().replace(".", "");
+
+    if (!name) return;
+
+    // Check if it already exists
+    if (!languagesList.some((l) => l.name.toLowerCase() === name.toLowerCase())) {
+      languagesList.push({
+        name: name,
+        ext: ext || name.toLowerCase().slice(0, 3),
+        icon: "💻"
+      });
+      localStorage.setItem("custom_languages", JSON.stringify(languagesList));
+    }
+
+    populateLangSelect();
+    renderLanguages();
+
+    langForm.reset();
+    langModal.classList.add("hidden");
+  });
+}
 
 // --- GOOGLE AUTHENTICATION ---
-googleSignInBtn.addEventListener("click", async () => {
-  try {
-    authError.classList.add("hidden");
-    await signInWithPopup(auth, provider);
-    authModal.classList.add("hidden");
-  } catch (err) {
-    authError.textContent = err.message;
-    authError.classList.remove("hidden");
-  }
-});
+if (googleSignInBtn) {
+  googleSignInBtn.addEventListener("click", async () => {
+    try {
+      authError.classList.add("hidden");
+      await signInWithPopup(auth, provider);
+      authModal.classList.add("hidden");
+    } catch (err) {
+      authError.textContent = err.message;
+      authError.classList.remove("hidden");
+    }
+  });
+}
 
-logoutBtn.addEventListener("click", async () => {
-  if (unsubscribe) unsubscribe();
-  await signOut(auth);
-});
+if (logoutBtn) {
+  logoutBtn.addEventListener("click", async () => {
+    if (unsubscribe) unsubscribe();
+    await signOut(auth);
+  });
+}
 
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    landing.classList.add("hidden");
-    appSection.classList.remove("hidden");
+    if (landing) landing.classList.add("hidden");
+    if (appSection) appSection.classList.remove("hidden");
 
-    displayName.textContent = user.displayName || user.email.split("@")[0];
-    if (user.photoURL) {
+    if (displayName) displayName.textContent = user.displayName || user.email.split("@")[0];
+    if (user.photoURL && userAvatar) {
       userAvatar.src = user.photoURL;
       userAvatar.style.display = "block";
-      defaultAvatar.style.display = "none";
+      if (defaultAvatar) defaultAvatar.style.display = "none";
     }
 
     populateLangSelect();
+    renderLanguages();
     listenToUserData(user.uid);
   } else {
     currentUser = null;
     userPrograms = [];
-    landing.classList.remove("hidden");
-    appSection.classList.add("hidden");
+    if (landing) landing.classList.remove("hidden");
+    if (appSection) appSection.classList.add("hidden");
   }
 });
 
 // --- FIRESTORE USER ISOLATION ---
 function listenToUserData(userId) {
+  // Querying by userId without strict composite order requirements to avoid indexing failures
   const q = query(
     collection(db, "programs"),
-    where("userId", "==", userId),
-    orderBy("createdAt", "desc")
+    where("userId", "==", userId)
   );
 
   unsubscribe = onSnapshot(q, (snapshot) => {
     userPrograms = [];
     snapshot.forEach((d) => userPrograms.push({ id: d.id, ...d.data() }));
+
+    // Sort in memory by createdAt descending
+    userPrograms.sort((a, b) => {
+      const timeA = a.createdAt?.seconds || 0;
+      const timeB = b.createdAt?.seconds || 0;
+      return timeB - timeA;
+    });
+
     updateUI();
   }, (err) => {
-    console.error("Firestore Error:", err);
+    console.error("Firestore Listen Error:", err);
   });
 }
 
@@ -215,71 +300,97 @@ function sanitize(text) {
 
 // --- DASHBOARD & STATS UPDATE ---
 function updateUI() {
-  document.getElementById("totalPrograms").textContent = userPrograms.length;
+  const totalProgramsElem = document.getElementById("totalPrograms");
+  if (totalProgramsElem) totalProgramsElem.textContent = userPrograms.length;
   
-  const uniqueLangs = new Set(userPrograms.map((p) => p.lang)).size;
-  document.getElementById("totalLanguages").textContent = uniqueLangs;
+  const uniqueLangs = new Set(userPrograms.map((p) => (p.lang || "").toLowerCase())).size;
+  const totalLanguagesElem = document.getElementById("totalLanguages");
+  if (totalLanguagesElem) totalLanguagesElem.textContent = uniqueLangs;
 
   const mastery = Math.min(100, Math.round((userPrograms.length / 100) * 100));
-  document.getElementById("masteryPercent").textContent = `${mastery}%`;
-  document.getElementById("masteryBar").style.width = `${mastery}%`;
-  document.getElementById("masteryText").textContent = userPrograms.length;
-  document.getElementById("circlePercent").textContent = `${mastery}%`;
+  const masteryPercentElem = document.getElementById("masteryPercent");
+  if (masteryPercentElem) masteryPercentElem.textContent = `${mastery}%`;
   
-  const circleOffset = 326.7 - (326.7 * mastery) / 100;
-  document.getElementById("circleFill").style.strokeDashoffset = circleOffset;
+  const masteryBar = document.getElementById("masteryBar");
+  if (masteryBar) masteryBar.style.width = `${mastery}%`;
+  
+  const masteryText = document.getElementById("masteryText");
+  if (masteryText) masteryText.textContent = userPrograms.length;
+  
+  const circlePercent = document.getElementById("circlePercent");
+  if (circlePercent) circlePercent.textContent = `${mastery}%`;
+  
+  const circleFill = document.getElementById("circleFill");
+  if (circleFill) {
+    const circleOffset = 326.7 - (326.7 * mastery) / 100;
+    circleFill.style.strokeDashoffset = circleOffset;
+  }
 
   // Recent list
   const recentList = document.getElementById("recentList");
-  recentList.innerHTML = "";
-  userPrograms.slice(0, 5).forEach((prog) => {
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <span><strong>${sanitize(prog.title)}</strong> (${sanitize(prog.lang)})</span>
-      <span class="recent-meta">Sem ${prog.semester}</span>
-    `;
-    li.addEventListener("click", () => openViewer(prog));
-    recentList.appendChild(li);
-  });
+  if (recentList) {
+    recentList.innerHTML = "";
+    if (userPrograms.length === 0) {
+      recentList.innerHTML = `<li style="color: var(--text-muted); cursor: default;">No uploads yet. Go to the Upload tab to add your first file!</li>`;
+    } else {
+      userPrograms.slice(0, 5).forEach((prog) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span><strong>${sanitize(prog.title)}</strong> (${sanitize(prog.lang)})</span>
+          <span class="recent-meta">Sem ${prog.semester}</span>
+        `;
+        li.addEventListener("click", () => openViewer(prog));
+        recentList.appendChild(li);
+      });
+    }
+  }
 
   // Render Upload Tab List
   const uploadList = document.getElementById("uploadList");
-  uploadList.innerHTML = "";
-  userPrograms.forEach((p) => {
-    const item = document.createElement("div");
-    item.className = "upload-item neo-raised";
-    item.innerHTML = `
-      <div class="upload-info">
-        <h4>${sanitize(p.title)}</h4>
-        <span>${sanitize(p.topic)} • ${sanitize(p.lang)} • Semester ${p.semester}</span>
-      </div>
-      <button class="neo-btn">View Code</button>
-    `;
-    item.querySelector("button").addEventListener("click", () => openViewer(p));
-    uploadList.appendChild(item);
-  });
+  if (uploadList) {
+    uploadList.innerHTML = "";
+    if (userPrograms.length === 0) {
+      uploadList.innerHTML = `<p style="text-align: center; color: var(--text-muted); padding: 16px;">No code uploaded yet.</p>`;
+    } else {
+      userPrograms.forEach((p) => {
+        const item = document.createElement("div");
+        item.className = "upload-item neo-raised";
+        item.innerHTML = `
+          <div class="upload-info">
+            <h4>${sanitize(p.title)}</h4>
+            <span>${sanitize(p.topic)} • ${sanitize(p.lang)} • Semester ${p.semester}</span>
+          </div>
+          <button class="neo-btn">View Code</button>
+        `;
+        item.querySelector("button").addEventListener("click", () => openViewer(p));
+        uploadList.appendChild(item);
+      });
+    }
+  }
 
   renderLanguages();
   renderHeatmap();
   renderSemesters();
 }
 
-// --- TABS ---
+// --- TAB SWITCHING ---
 document.querySelectorAll(".nav-tabs .tab").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".nav-tabs .tab").forEach((t) => t.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
     btn.classList.add("pressed");
-    setTimeout(() => btn.classList.remove("pressed"), 200);
+    setTimeout(() => btn.classList.remove("pressed"), 150);
     btn.classList.add("active");
-    document.getElementById(btn.dataset.tab).classList.add("active");
+    const target = document.getElementById(btn.dataset.tab);
+    if (target) target.classList.add("active");
   });
 });
 
-// --- LANGUAGES ---
+// --- LANGUAGES RENDER & SYNC ---
 function populateLangSelect() {
+  if (!progLang) return;
   progLang.innerHTML = "";
-  defaultLanguages.forEach((l) => {
+  languagesList.forEach((l) => {
     const opt = document.createElement("option");
     opt.value = l.name;
     opt.textContent = l.name;
@@ -288,113 +399,156 @@ function populateLangSelect() {
 }
 
 function renderLanguages() {
-  const carousel = document.getElementById("languageCarousel");
-  const grid = document.getElementById("languageGrid");
-  carousel.innerHTML = "";
-  grid.innerHTML = "";
+  const carouselElem = document.getElementById("languageCarousel");
+  const gridElem = document.getElementById("languageGrid");
+  if (!carouselElem || !gridElem) return;
 
-  defaultLanguages.forEach((lang) => {
-    const count = userPrograms.filter((p) => p.lang.toLowerCase() === lang.name.toLowerCase()).length;
+  carouselElem.innerHTML = "";
+  gridElem.innerHTML = "";
+
+  languagesList.forEach((lang) => {
+    const count = userPrograms.filter((p) => (p.lang || "").toLowerCase() === lang.name.toLowerCase()).length;
+    
     const card = document.createElement("div");
     card.className = "lang-card neo-raised";
     card.innerHTML = `
       <div class="lang-icon">${lang.icon}</div>
-      <h4>${lang.name}</h4>
+      <h4>${sanitize(lang.name)}</h4>
       <div class="lang-stats">
         <span>${count} Programs</span>
       </div>
     `;
-    carousel.appendChild(card);
-    grid.appendChild(card.cloneNode(true));
+    carouselElem.appendChild(card);
+    gridElem.appendChild(card.cloneNode(true));
   });
 }
 
 // --- FILE UPLOADS ---
-browseBtn.addEventListener("click", () => fileInput.click());
+if (browseBtn && fileInput) {
+  browseBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    fileInput.click();
+  });
 
-fileInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) handleFileRead(file);
-});
+  fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) handleFileRead(file);
+    fileInput.value = ""; // Clear so subsequent uploads of same file re-trigger
+  });
+}
 
-dropZone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropZone.classList.add("drag-over");
-});
+if (dropZone) {
+  dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    dropZone.classList.add("drag-over");
+  });
 
-dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
 
-dropZone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropZone.classList.remove("drag-over");
-  if (e.dataTransfer.files.length) handleFileRead(e.dataTransfer.files[0]);
-});
+  dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      handleFileRead(e.dataTransfer.files[0]);
+    }
+  });
+}
 
 function handleFileRead(file) {
   const reader = new FileReader();
   reader.onload = (e) => {
     pendingFileCode = e.target.result;
-    document.getElementById("progTitle").value = file.name.replace(/\.[^/.]+$/, "");
-    metaModal.classList.remove("hidden");
+    
+    const cleanName = file.name.replace(/\.[^/.]+$/, "");
+    document.getElementById("progTitle").value = cleanName;
+    document.getElementById("progTopic").value = "General Assignment";
+
+    // Auto-match language by extension
+    const ext = file.name.split(".").pop().toLowerCase();
+    const matched = languagesList.find((l) => (l.ext || "").toLowerCase() === ext);
+    if (matched && progLang) {
+      progLang.value = matched.name;
+    }
+
+    if (metaModal) metaModal.classList.remove("hidden");
   };
   reader.readAsText(file);
 }
 
 // --- SAVE PROGRAM TO FIRESTORE ---
-metaForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (!currentUser) return;
+if (metaForm) {
+  metaForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!currentUser) {
+      alert("Please sign in first.");
+      return;
+    }
 
-  const title = document.getElementById("progTitle").value.trim();
-  const topic = document.getElementById("progTopic").value.trim();
-  const semester = parseInt(document.getElementById("progSemester").value, 10);
-  const lang = document.getElementById("progLang").value;
+    const title = document.getElementById("progTitle").value.trim();
+    const topic = document.getElementById("progTopic").value.trim();
+    const semester = parseInt(document.getElementById("progSemester").value, 10);
+    const lang = document.getElementById("progLang").value;
 
-  try {
-    await addDoc(collection(db, "programs"), {
-      userId: currentUser.uid,
-      title,
-      topic,
-      semester,
-      lang,
-      code: pendingFileCode || "// No raw code uploaded",
-      createdAt: serverTimestamp()
-    });
+    try {
+      await addDoc(collection(db, "programs"), {
+        userId: currentUser.uid,
+        title: title,
+        topic: topic,
+        semester: semester,
+        lang: lang,
+        code: pendingFileCode || "// No raw code provided",
+        createdAt: serverTimestamp()
+      });
 
-    metaModal.classList.add("hidden");
-    metaForm.reset();
-    pendingFileCode = "";
-  } catch (err) {
-    alert("Save error: " + err.message);
-  }
-});
+      metaModal.classList.add("hidden");
+      metaForm.reset();
+      pendingFileCode = "";
+    } catch (err) {
+      alert("Save failed: " + err.message);
+    }
+  });
+}
 
 // --- CODE VIEWER ---
 function openViewer(prog) {
   viewingDocId = prog.id;
-  viewerTitle.textContent = `${prog.title} (${prog.lang})`;
-  viewerCode.textContent = prog.code;
-  viewerCode.className = `language-${prog.lang.toLowerCase()}`;
-  if (window.Prism) Prism.highlightElement(viewerCode);
-  viewerModal.classList.remove("hidden");
+  if (viewerTitle) viewerTitle.textContent = `${prog.title} (${prog.lang})`;
+  if (viewerCode) {
+    viewerCode.textContent = prog.code;
+    viewerCode.className = `language-${(prog.lang || "c").toLowerCase()}`;
+    if (window.Prism) Prism.highlightElement(viewerCode);
+  }
+  if (viewerModal) viewerModal.classList.remove("hidden");
 }
 
-copyCodeBtn.addEventListener("click", () => {
-  navigator.clipboard.writeText(viewerCode.textContent);
-  copyCodeBtn.textContent = "Copied!";
-  setTimeout(() => (copyCodeBtn.textContent = "Copy"), 1500);
-});
+if (copyCodeBtn) {
+  copyCodeBtn.addEventListener("click", () => {
+    if (viewerCode) {
+      navigator.clipboard.writeText(viewerCode.textContent);
+      copyCodeBtn.textContent = "Copied!";
+      setTimeout(() => (copyCodeBtn.textContent = "Copy"), 1500);
+    }
+  });
+}
 
-deleteCodeBtn.addEventListener("click", async () => {
-  if (viewingDocId && confirm("Delete this program?")) {
-    await deleteDoc(doc(db, "programs", viewingDocId));
-    viewerModal.classList.add("hidden");
-  }
-});
+if (deleteCodeBtn) {
+  deleteCodeBtn.addEventListener("click", async () => {
+    if (viewingDocId && confirm("Are you sure you want to delete this program?")) {
+      try {
+        await deleteDoc(doc(db, "programs", viewingDocId));
+        if (viewerModal) viewerModal.classList.add("hidden");
+        viewingDocId = null;
+      } catch (err) {
+        alert("Delete failed: " + err.message);
+      }
+    }
+  });
+}
 
 // --- HEATMAP & JOURNEY ---
 function renderHeatmap() {
   const heatmap = document.getElementById("heatmap");
+  if (!heatmap) return;
   heatmap.innerHTML = "";
   for (let i = 0; i < 52 * 7; i++) {
     const cell = document.createElement("div");
@@ -408,6 +562,8 @@ function renderHeatmap() {
 function renderSemesters() {
   const milestones = document.getElementById("semesterMilestones");
   const cards = document.getElementById("semesterCards");
+  if (!milestones || !cards) return;
+
   milestones.innerHTML = "";
   cards.innerHTML = "";
 
