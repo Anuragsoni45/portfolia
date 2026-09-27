@@ -6,15 +6,796 @@
   <meta http-equiv="X-Content-Type-Options" content="nosniff" />
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>4-Year BTech CSE Coding Portfolio & Journey Tracker</title>
-  <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e0e5ec;
+      --text: #2d3436;
+      --text-muted: #636e72;
+      --shadow-light: #ffffff;
+      --shadow-dark: #bebebe;
+      --accent: #6c5ce7;
+      --accent-hover: #5a4bd1;
+      --success: #00b894;
+      --danger: #d63031;
+      --radius: 16px;
+      --radius-sm: 12px;
+      --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.dark-mode {
+      --bg: #1a1d23;
+      --text: #e8eaed;
+      --text-muted: #9aa0a6;
+      --shadow-light: #2a2e36;
+      --shadow-dark: #0d0f12;
+      --accent: #a29bfe;
+      --accent-hover: #8c7ae6;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      min-height: 100%;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background var(--transition), color var(--transition);
+      overflow-x: hidden;
+    }
+
+    .neo-raised {
+      background: var(--bg);
+      border-radius: var(--radius);
+      box-shadow: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+      transition: box-shadow var(--transition), transform var(--transition);
+    }
+
+    .neo-inset {
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+      border: none;
+      outline: none;
+      color: var(--text);
+      transition: box-shadow var(--transition);
+    }
+
+    .neo-btn {
+      background: var(--bg);
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 12px 22px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      box-shadow: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+      transition: all var(--transition);
+      font-family: inherit;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      user-select: none;
+    }
+
+    .neo-btn:hover {
+      box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+    }
+
+    .neo-btn:active,
+    .neo-btn.pressed {
+      transform: scale(0.97);
+      box-shadow: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+    }
+
+    .neo-btn.primary {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .neo-btn.danger {
+      color: var(--danger);
+    }
+
+    .neo-btn.full {
+      width: 100%;
+    }
+
+    .neo-btn.icon-btn {
+      width: 42px;
+      height: 42px;
+      padding: 0;
+      border-radius: 50%;
+      font-size: 1.1rem;
+    }
+
+    .watermark {
+      position: fixed;
+      bottom: 12px;
+      right: 16px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      opacity: 0.45;
+      pointer-events: none;
+      z-index: 9999;
+      letter-spacing: 0.5px;
+      font-weight: 400;
+    }
+
+    .audio-player {
+      position: fixed;
+      top: 16px;
+      left: 16px;
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      max-width: 340px;
+    }
+
+    .volume-wrap input[type="range"] {
+      width: 70px;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .volume-wrap input[type="range"]::-webkit-slider-runnable-track {
+      height: 6px;
+      border-radius: 3px;
+      background: var(--bg);
+      box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+    }
+
+    .volume-wrap input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--accent);
+      margin-top: -5px;
+      box-shadow: 2px 2px 4px var(--shadow-dark);
+    }
+
+    .wave-visualizer {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 20px;
+    }
+
+    .wave-visualizer span {
+      width: 3px;
+      background: var(--accent);
+      border-radius: 2px;
+      height: 6px;
+      transition: height 0.15s;
+    }
+
+    .wave-visualizer.playing span:nth-child(1) { animation: wave 0.6s ease-in-out infinite; }
+    .wave-visualizer.playing span:nth-child(2) { animation: wave 0.6s ease-in-out 0.1s infinite; }
+    .wave-visualizer.playing span:nth-child(3) { animation: wave 0.6s ease-in-out 0.2s infinite; }
+    .wave-visualizer.playing span:nth-child(4) { animation: wave 0.6s ease-in-out 0.15s infinite; }
+    .wave-visualizer.playing span:nth-child(5) { animation: wave 0.6s ease-in-out 0.05s infinite; }
+
+    @keyframes wave {
+      0%, 100% { height: 6px; }
+      50% { height: 18px; }
+    }
+
+    .track-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .theme-toggle {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 1000;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+    }
+
+    .landing {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 48px 40px;
+      max-width: 560px;
+      width: 100%;
+    }
+
+    .hero h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .hero h2 {
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: var(--accent);
+      margin-bottom: 16px;
+    }
+
+    .tagline {
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal.hidden {
+      display: none;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      position: relative;
+      width: 100%;
+      max-width: 420px;
+      padding: 32px 28px;
+      z-index: 1;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-content.viewer-content {
+      max-width: 780px;
+    }
+
+    .close-modal {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+    }
+
+    .modal-content h3 {
+      margin-bottom: 24px;
+      font-size: 1.35rem;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    .error-msg {
+      color: var(--danger);
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+    }
+
+    .error-msg.hidden {
+      display: none;
+    }
+
+    .app {
+      min-height: 100vh;
+      padding: 80px 20px 40px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .app.hidden {
+      display: none;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+    }
+
+    .semester-badge {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .nav-tabs .tab.active {
+      color: var(--accent);
+      box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+    }
+
+    .tab-panel {
+      display: none;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      padding: 22px 16px;
+      text-align: center;
+    }
+
+    .stat-value {
+      display: block;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    .progress-section,
+    .recent-section {
+      padding: 22px;
+      margin-bottom: 20px;
+    }
+
+    .progress-section h3,
+    .recent-section h3 {
+      margin-bottom: 14px;
+      font-size: 1.1rem;
+    }
+
+    .progress-bar {
+      height: 18px;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #74b9ff);
+      border-radius: 10px;
+      transition: width 0.6s ease;
+    }
+
+    .progress-text {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .recent-list {
+      list-style: none;
+    }
+
+    .recent-list li {
+      padding: 12px 0;
+      border-bottom: 1px solid rgba(128,128,128,0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      transition: color var(--transition);
+    }
+
+    .recent-list li:hover {
+      color: var(--accent);
+    }
+
+    .recent-list li:last-child {
+      border-bottom: none;
+    }
+
+    .recent-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .carousel-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+
+    .carousel {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      scroll-behavior: smooth;
+      padding: 12px 4px;
+      flex: 1;
+      scrollbar-width: none;
+    }
+
+    .carousel::-webkit-scrollbar {
+      display: none;
+    }
+
+    .lang-card {
+      min-width: 180px;
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .lang-card .lang-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .lang-card h4 {
+      font-size: 1.05rem;
+      margin-bottom: 8px;
+    }
+
+    .lang-stats {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .lang-stats span {
+      display: block;
+    }
+
+    .add-lang-btn {
+      margin-bottom: 24px;
+    }
+
+    .language-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .drop-zone {
+      min-height: 220px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      border: 2px dashed transparent;
+      transition: all var(--transition);
+    }
+
+    .drop-zone.drag-over {
+      border-color: var(--accent);
+      box-shadow: inset 6px 6px 12px var(--shadow-dark), inset -6px -6px 12px var(--shadow-light);
+      transform: scale(0.99);
+    }
+
+    .drop-content {
+      text-align: center;
+      padding: 24px;
+    }
+
+    .drop-icon {
+      font-size: 3rem;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .drop-content p {
+      margin: 6px 0;
+      color: var(--text-muted);
+    }
+
+    .drop-content code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      background: rgba(108, 92, 231, 0.12);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .upload-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .upload-item {
+      padding: 16px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .upload-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .upload-info h4 {
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .upload-info span {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .journey-progress {
+      display: flex;
+      align-items: center;
+      justify-content: space-around;
+      flex-wrap: wrap;
+      gap: 24px;
+      padding: 28px;
+      margin-bottom: 28px;
+    }
+
+    .semester-milestones {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      max-width: 420px;
+    }
+
+    .milestone {
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: var(--bg);
+      box-shadow: 4px 4px 8px var(--shadow-dark), -4px -4px 8px var(--shadow-light);
+    }
+
+    .milestone.done {
+      color: var(--success);
+      box-shadow: inset 3px 3px 6px var(--shadow-dark), inset -3px -3px 6px var(--shadow-light);
+    }
+
+    .mastery-circle {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .mastery-circle svg {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .circle-bg {
+      fill: none;
+      stroke: var(--shadow-dark);
+      stroke-width: 8;
+      opacity: 0.3;
+    }
+
+    .circle-fill {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 8;
+      stroke-linecap: round;
+      stroke-dasharray: 326.7;
+      stroke-dashoffset: 326.7;
+      transition: stroke-dashoffset 0.8s ease;
+    }
+
+    .circle-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      z-index: 1;
+    }
+
+    .heatmap-wrap {
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .heatmap {
+      display: grid;
+      grid-template-columns: repeat(52, 1fr);
+      gap: 3px;
+      margin-bottom: 12px;
+    }
+
+    .heat-cell {
+      aspect-ratio: 1;
+      border-radius: 2px;
+      background: var(--shadow-dark);
+      opacity: 0.25;
+      transition: opacity 0.2s;
+    }
+
+    .heat-cell.l1 { opacity: 0.4; background: var(--accent); }
+    .heat-cell.l2 { opacity: 0.55; background: var(--accent); }
+    .heat-cell.l3 { opacity: 0.75; background: var(--accent); }
+    .heat-cell.l4 { opacity: 1; background: var(--accent); }
+
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      justify-content: flex-end;
+    }
+
+    .leg-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      background: var(--accent);
+    }
+
+    .leg-box.l0 { opacity: 0.25; background: var(--shadow-dark); }
+    .leg-box.l1 { opacity: 0.4; }
+    .leg-box.l2 { opacity: 0.55; }
+    .leg-box.l3 { opacity: 0.75; }
+    .leg-box.l4 { opacity: 1; }
+
+    .semester-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    .sem-card {
+      padding: 18px;
+      text-align: center;
+    }
+
+    .sem-card h4 {
+      margin-bottom: 8px;
+    }
+
+    .sem-card .count {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .viewer-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .code-viewer {
+      background: #1e1e2e;
+      border-radius: var(--radius-sm);
+      padding: 18px;
+      overflow-x: auto;
+      max-height: 55vh;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+
+    .code-viewer code {
+      color: #cdd6f4;
+    }
+
+    @media (max-width: 640px) {
+      .hero h1 { font-size: 1.8rem; }
+      .app { padding-top: 100px; }
+      .audio-player {
+        max-width: calc(100% - 80px);
+        font-size: 0.8rem;
+      }
+      .track-label { display: none; }
+      .nav-tabs { width: 100%; justify-content: center; }
+      .heatmap {
+        grid-template-columns: repeat(26, 1fr);
+      }
+    }
+  </style>
 </head>
 <body class="light-mode">
-  <!-- Watermark -->
   <div class="watermark">Made by Anurag Soni</div>
 
-  <!-- Floating Audio Player -->
   <div id="audioPlayer" class="audio-player neo-raised">
     <button id="playPauseBtn" class="neo-btn icon-btn" title="Play / Pause" aria-label="Play Pause">
       <span id="playIcon">▶</span>
@@ -31,12 +812,10 @@
     <span class="track-label">Ambient Soft Loop</span>
   </div>
 
-  <!-- Theme Toggle -->
   <button id="themeToggle" class="neo-btn theme-toggle" title="Toggle Dark / Light" aria-label="Theme">
     <span id="themeIcon">🌙</span>
   </button>
 
-  <!-- Landing / Hero (shown when not logged in) -->
   <section id="landing" class="landing">
     <div class="hero neo-raised">
       <h1>4-Year BTech CSE</h1>
@@ -48,7 +827,6 @@
     </div>
   </section>
 
-  <!-- Auth Modal -->
   <div id="authModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised">
@@ -70,7 +848,6 @@
     </div>
   </div>
 
-  <!-- Main App (shown after login) -->
   <main id="app" class="app hidden">
     <header class="app-header neo-raised">
       <div class="user-info">
@@ -90,7 +867,6 @@
       <button id="logoutBtn" class="neo-btn danger">Logout</button>
     </header>
 
-    <!-- Dashboard Tab -->
     <section id="dashboard" class="tab-panel active">
       <div class="stats-grid">
         <div class="stat-card neo-raised">
@@ -123,7 +899,6 @@
       </div>
     </section>
 
-    <!-- Languages Tab -->
     <section id="languages" class="tab-panel">
       <h2 class="section-title">Language Explorer</h2>
       <div class="carousel-wrap">
@@ -135,7 +910,6 @@
       <div id="languageGrid" class="language-grid"></div>
     </section>
 
-    <!-- Upload Tab -->
     <section id="upload" class="tab-panel">
       <h2 class="section-title">Drag & Drop Code Upload</h2>
       <div id="dropZone" class="drop-zone neo-inset">
@@ -150,7 +924,6 @@
       <div id="uploadList" class="upload-list"></div>
     </section>
 
-    <!-- Journey Tracker Tab -->
     <section id="tracker" class="tab-panel">
       <h2 class="section-title">100% 4-Year Journey Tracker</h2>
       <div class="journey-progress neo-raised">
@@ -180,7 +953,6 @@
     </section>
   </main>
 
-  <!-- Upload Meta Modal -->
   <div id="metaModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised">
@@ -217,7 +989,6 @@
     </div>
   </div>
 
-  <!-- Code Viewer Modal -->
   <div id="viewerModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised viewer-content">
@@ -233,7 +1004,6 @@
     </div>
   </div>
 
-  <!-- Add Language Modal -->
   <div id="langModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised">
@@ -259,7 +1029,6 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
-  <!-- Main Application Logic connected as ES Module -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
