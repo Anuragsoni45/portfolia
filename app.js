@@ -300,29 +300,33 @@ function sanitize(text) {
   return div.innerHTML;
 }
 
-// --- LANGUAGE FILTER HANDLERS ---
+// --- LANGUAGE FILTER HANDLER ---
 function selectLanguage(langName) {
   activeLanguageFilter = langName;
-  if (!langFilteredSection || !selectedLangTitle || !langFilteredList) return;
+  const filteredSection = document.getElementById("langFilteredSection");
+  const titleElem = document.getElementById("selectedLangTitle");
+  const listElem = document.getElementById("langFilteredList");
+
+  if (!filteredSection || !titleElem || !listElem) return;
 
   const matched = userPrograms.filter(
-    (p) => (p.lang || "").toLowerCase() === langName.toLowerCase()
+    (p) => (p.lang || "").trim().toLowerCase() === langName.trim().toLowerCase()
   );
 
-  selectedLangTitle.textContent = `${langName} Programs (${matched.length})`;
-  langFilteredList.innerHTML = "";
+  titleElem.textContent = `${langName} Programs (${matched.length})`;
+  listElem.innerHTML = "";
 
   if (matched.length === 0) {
-    langFilteredList.innerHTML = `
+    listElem.innerHTML = `
       <div style="text-align: center; color: var(--text-muted); padding: 20px;">
-        No programs uploaded in <strong>${sanitize(langName)}</strong> yet. 
-        Head over to the <strong>Upload</strong> tab to add one!
+        No programs uploaded under <strong>${sanitize(langName)}</strong> yet.
       </div>
     `;
   } else {
     matched.forEach((p) => {
       const item = document.createElement("div");
       item.className = "upload-item neo-raised";
+      item.style.marginBottom = "12px";
       item.innerHTML = `
         <div class="upload-info">
           <h4>${sanitize(p.title)}</h4>
@@ -331,18 +335,20 @@ function selectLanguage(langName) {
         <button class="neo-btn primary">View Code</button>
       `;
       item.querySelector("button").addEventListener("click", () => openViewer(p));
-      langFilteredList.appendChild(item);
+      listElem.appendChild(item);
     });
   }
 
-  langFilteredSection.classList.remove("hidden");
-  langFilteredSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  filteredSection.classList.remove("hidden");
+  renderLanguages();
+  filteredSection.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 if (closeLangFilterBtn) {
   closeLangFilterBtn.addEventListener("click", () => {
     activeLanguageFilter = null;
     if (langFilteredSection) langFilteredSection.classList.add("hidden");
+    renderLanguages();
   });
 }
 
@@ -417,7 +423,9 @@ function updateUI() {
   }
 
   renderLanguages();
-  if (activeLanguageFilter) selectLanguage(activeLanguageFilter);
+  if (activeLanguageFilter) {
+    selectLanguage(activeLanguageFilter);
+  }
   renderHeatmap();
   renderSemesters();
 }
@@ -435,7 +443,7 @@ document.querySelectorAll(".nav-tabs .tab").forEach((btn) => {
   });
 });
 
-// --- RENDER LANGUAGES WITH CLICK HANDLERS ---
+// --- RENDER LANGUAGES WITH DIRECT CLICK HANDLERS ---
 function populateLangSelect() {
   if (!progLang) return;
   progLang.innerHTML = "";
@@ -456,13 +464,21 @@ function renderLanguages() {
   gridElem.innerHTML = "";
 
   languagesList.forEach((lang) => {
-    const count = userPrograms.filter((p) => (p.lang || "").toLowerCase() === lang.name.toLowerCase()).length;
-    
-    // Create card element
-    const createCard = () => {
+    const count = userPrograms.filter(
+      (p) => (p.lang || "").trim().toLowerCase() === lang.name.trim().toLowerCase()
+    ).length;
+
+    const createLanguageCard = () => {
       const card = document.createElement("div");
       card.className = "lang-card neo-raised";
+      card.setAttribute("role", "button");
       card.style.cursor = "pointer";
+      card.title = `Click to view ${lang.name} programs`;
+
+      if (activeLanguageFilter && activeLanguageFilter.toLowerCase() === lang.name.toLowerCase()) {
+        card.style.boxShadow = "inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light)";
+      }
+
       card.innerHTML = `
         <div class="lang-icon">${lang.icon}</div>
         <h4>${sanitize(lang.name)}</h4>
@@ -470,12 +486,16 @@ function renderLanguages() {
           <span>${count} Programs</span>
         </div>
       `;
-      card.addEventListener("click", () => selectLanguage(lang.name));
+
+      card.addEventListener("click", () => {
+        selectLanguage(lang.name);
+      });
+
       return card;
     };
 
-    carouselElem.appendChild(createCard());
-    gridElem.appendChild(createCard());
+    carouselElem.appendChild(createLanguageCard());
+    gridElem.appendChild(createLanguageCard());
   });
 }
 
