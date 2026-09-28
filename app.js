@@ -190,7 +190,9 @@ document.querySelectorAll("[data-close]").forEach((btn) => {
 });
 
 if (openLoginBtn) {
-  openLoginBtn.addEventListener("click", () => authModal.classList.remove("hidden"));
+  openLoginBtn.addEventListener("click", () => {
+    if (authModal) authModal.classList.remove("hidden");
+  });
 }
 
 // --- ADD LANGUAGE ---
@@ -226,16 +228,18 @@ if (langForm) {
   });
 }
 
-// --- GOOGLE AUTHENTICATION ---
+// --- GOOGLE AUTHENTICATION & AUTOMATIC TRANSITION ---
 if (googleSignInBtn) {
   googleSignInBtn.addEventListener("click", async () => {
     try {
-      authError.classList.add("hidden");
+      if (authError) authError.classList.add("hidden");
       await signInWithPopup(auth, provider);
-      authModal.classList.add("hidden");
+      if (authModal) authModal.classList.add("hidden");
     } catch (err) {
-      authError.textContent = err.message;
-      authError.classList.remove("hidden");
+      if (authError) {
+        authError.textContent = err.message;
+        authError.classList.remove("hidden");
+      }
     }
   });
 }
@@ -247,12 +251,27 @@ if (logoutBtn) {
   });
 }
 
+// Automatic UI state switch on auth state change
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    if (landing) landing.classList.add("hidden");
-    if (appSection) appSection.classList.remove("hidden");
+    
+    // Explicitly hide the landing hero and auth modal
+    if (landing) {
+      landing.classList.add("hidden");
+      landing.style.display = "none";
+    }
+    if (authModal) {
+      authModal.classList.add("hidden");
+    }
 
+    // Explicitly show the main app layout
+    if (appSection) {
+      appSection.classList.remove("hidden");
+      appSection.style.display = "block";
+    }
+
+    // Set user profile info
     if (displayName) displayName.textContent = user.displayName || user.email.split("@")[0];
     if (user.photoURL && userAvatar) {
       userAvatar.src = user.photoURL;
@@ -260,14 +279,30 @@ onAuthStateChanged(auth, (user) => {
       if (defaultAvatar) defaultAvatar.style.display = "none";
     }
 
+    // Default to the dashboard tab
+    document.querySelectorAll(".nav-tabs .tab").forEach((t) => t.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+    const dashTab = document.querySelector('.nav-tabs .tab[data-tab="dashboard"]');
+    const dashPanel = document.getElementById("dashboard");
+    if (dashTab) dashTab.classList.add("active");
+    if (dashPanel) dashPanel.classList.add("active");
+
     populateLangSelect();
     renderLanguages();
     listenToUserData(user.uid);
   } else {
     currentUser = null;
     userPrograms = [];
-    if (landing) landing.classList.remove("hidden");
-    if (appSection) appSection.classList.add("hidden");
+    
+    // Show landing page and hide app on logout
+    if (landing) {
+      landing.classList.remove("hidden");
+      landing.style.display = "flex";
+    }
+    if (appSection) {
+      appSection.classList.add("hidden");
+      appSection.style.display = "none";
+    }
   }
 });
 
