@@ -34,6 +34,9 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
+// Constants
+const TARGET_PROGRAMS_4_YEARS = 500;
+
 // State
 let currentUser = null;
 let userPrograms = [];
@@ -112,12 +115,12 @@ if (carouselPrev && carouselNext && carousel) {
   });
 }
 
-// --- AUDIO PLAYER (Web Audio API Synthesizer) ---
+// --- ROMANTIC LOVE BGM (Gentle Acoustic Piano Synthesizer) ---
 let audioCtx = null;
 let isPlaying = false;
 let isMuted = false;
-let gainNode = null;
-let osc = null;
+let masterGain = null;
+let melodyInterval = null;
 
 const playPauseBtn = document.getElementById("playPauseBtn");
 const playIcon = document.getElementById("playIcon");
@@ -126,12 +129,66 @@ const muteIcon = document.getElementById("muteIcon");
 const volumeSlider = document.getElementById("volumeSlider");
 const waveVisualizer = document.getElementById("waveVisualizer");
 
+// Musical notes for soft romantic melody (Cmaj7 -> Am7 -> Fmaj7 -> G)
+const romanticChords = [
+  [261.63, 329.63, 392.00, 493.88], // Cmaj7 (C4, E4, G4, B4)
+  [220.00, 261.63, 329.63, 392.00], // Am7 (A3, C4, E4, G4)
+  [174.61, 220.00, 261.63, 329.63], // Fmaj7 (F3, A3, C4, E4)
+  [196.00, 246.94, 293.66, 392.00]  // G dominant (G3, B3, D4, G4)
+];
+
 function initAudio() {
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    gainNode = audioCtx.createGain();
-    gainNode.gain.value = volumeSlider.value;
-    gainNode.connect(audioCtx.destination);
+    masterGain = audioCtx.createGain();
+    masterGain.gain.value = volumeSlider ? volumeSlider.value : 0.4;
+    masterGain.connect(audioCtx.destination);
+  }
+}
+
+function playSoftNote(freq, startTime, duration) {
+  if (!audioCtx || !masterGain) return;
+  const osc = audioCtx.createOscillator();
+  const noteGain = audioCtx.createGain();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(freq, startTime);
+
+  // Smooth warm envelope
+  noteGain.gain.setValueAtTime(0, startTime);
+  noteGain.gain.linearRampToValueAtTime(0.2, startTime + 0.1);
+  noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+
+  osc.connect(noteGain);
+  noteGain.connect(masterGain);
+
+  osc.start(startTime);
+  osc.stop(startTime + duration);
+}
+
+function startLoveBGM() {
+  let chordIndex = 0;
+  let arpeggioStep = 0;
+
+  melodyInterval = setInterval(() => {
+    if (!isPlaying || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    const currentChord = romanticChords[chordIndex];
+    const note = currentChord[arpeggioStep];
+
+    playSoftNote(note, now, 1.4);
+
+    arpeggioStep = (arpeggioStep + 1) % currentChord.length;
+    if (arpeggioStep === 0) {
+      chordIndex = (chordIndex + 1) % romanticChords.length;
+    }
+  }, 450);
+}
+
+function stopLoveBGM() {
+  if (melodyInterval) {
+    clearInterval(melodyInterval);
+    melodyInterval = null;
   }
 }
 
@@ -139,35 +196,31 @@ if (playPauseBtn) {
   playPauseBtn.addEventListener("click", () => {
     initAudio();
     if (audioCtx.state === "suspended") audioCtx.resume();
-    
+
     if (!isPlaying) {
-      osc = audioCtx.createOscillator();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(220, audioCtx.currentTime);
-      osc.connect(gainNode);
-      osc.start();
       isPlaying = true;
+      startLoveBGM();
       playIcon.textContent = "⏸";
-      waveVisualizer.classList.add("playing");
+      if (waveVisualizer) waveVisualizer.classList.add("playing");
     } else {
-      if (osc) osc.stop();
       isPlaying = false;
+      stopLoveBGM();
       playIcon.textContent = "▶";
-      waveVisualizer.classList.remove("playing");
+      if (waveVisualizer) waveVisualizer.classList.remove("playing");
     }
   });
 }
 
 if (volumeSlider) {
   volumeSlider.addEventListener("input", (e) => {
-    if (gainNode) gainNode.gain.value = isMuted ? 0 : e.target.value;
+    if (masterGain) masterGain.gain.value = isMuted ? 0 : e.target.value;
   });
 }
 
 if (muteBtn) {
   muteBtn.addEventListener("click", () => {
     isMuted = !isMuted;
-    if (gainNode) gainNode.gain.value = isMuted ? 0 : volumeSlider.value;
+    if (masterGain) masterGain.gain.value = isMuted ? 0 : (volumeSlider ? volumeSlider.value : 0.4);
     muteIcon.textContent = isMuted ? "🔇" : "🔊";
   });
 }
@@ -228,7 +281,7 @@ if (langForm) {
   });
 }
 
-// --- GOOGLE AUTHENTICATION & AUTOMATIC TRANSITION ---
+// --- GOOGLE AUTHENTICATION ---
 if (googleSignInBtn) {
   googleSignInBtn.addEventListener("click", async () => {
     try {
@@ -251,27 +304,20 @@ if (logoutBtn) {
   });
 }
 
-// Automatic UI state switch on auth state change
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    
-    // Explicitly hide the landing hero and auth modal
     if (landing) {
       landing.classList.add("hidden");
       landing.style.display = "none";
     }
-    if (authModal) {
-      authModal.classList.add("hidden");
-    }
+    if (authModal) authModal.classList.add("hidden");
 
-    // Explicitly show the main app layout
     if (appSection) {
       appSection.classList.remove("hidden");
       appSection.style.display = "block";
     }
 
-    // Set user profile info
     if (displayName) displayName.textContent = user.displayName || user.email.split("@")[0];
     if (user.photoURL && userAvatar) {
       userAvatar.src = user.photoURL;
@@ -279,7 +325,7 @@ onAuthStateChanged(auth, (user) => {
       if (defaultAvatar) defaultAvatar.style.display = "none";
     }
 
-    // Default to the dashboard tab
+    // Default to Dashboard tab
     document.querySelectorAll(".nav-tabs .tab").forEach((t) => t.classList.remove("active"));
     document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
     const dashTab = document.querySelector('.nav-tabs .tab[data-tab="dashboard"]');
@@ -293,8 +339,6 @@ onAuthStateChanged(auth, (user) => {
   } else {
     currentUser = null;
     userPrograms = [];
-    
-    // Show landing page and hide app on logout
     if (landing) {
       landing.classList.remove("hidden");
       landing.style.display = "flex";
@@ -335,7 +379,7 @@ function sanitize(text) {
   return div.innerHTML;
 }
 
-// --- LANGUAGE FILTER HANDLER ---
+// --- LANGUAGE FILTER HANDLERS ---
 function selectLanguage(langName) {
   activeLanguageFilter = langName;
   const filteredSection = document.getElementById("langFilteredSection");
@@ -354,7 +398,8 @@ function selectLanguage(langName) {
   if (matched.length === 0) {
     listElem.innerHTML = `
       <div style="text-align: center; color: var(--text-muted); padding: 20px;">
-        No programs uploaded under <strong>${sanitize(langName)}</strong> yet.
+        No programs uploaded under <strong>${sanitize(langName)}</strong> yet. 
+        Go to the <strong>Upload</strong> tab to add one!
       </div>
     `;
   } else {
@@ -387,6 +432,42 @@ if (closeLangFilterBtn) {
   });
 }
 
+// --- STREAK CALCULATION (LOGICAL) ---
+function calculateStreak() {
+  if (userPrograms.length === 0) return 0;
+
+  const uploadDates = new Set();
+  userPrograms.forEach((p) => {
+    if (p.createdAt?.toDate) {
+      uploadDates.add(p.createdAt.toDate().toISOString().split("T")[0]);
+    } else if (p.createdAt?.seconds) {
+      uploadDates.add(new Date(p.createdAt.seconds * 1000).toISOString().split("T")[0]);
+    }
+  });
+
+  const today = new Date();
+  let currentStreak = 0;
+  let checkDate = new Date(today);
+
+  // If haven't uploaded today, check starting from yesterday
+  const todayStr = checkDate.toISOString().split("T")[0];
+  if (!uploadDates.has(todayStr)) {
+    checkDate.setDate(checkDate.getDate() - 1);
+  }
+
+  while (true) {
+    const dateStr = checkDate.toISOString().split("T")[0];
+    if (uploadDates.has(dateStr)) {
+      currentStreak++;
+      checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return currentStreak;
+}
+
 // --- DASHBOARD & STATS UPDATE ---
 function updateUI() {
   const totalProgramsElem = document.getElementById("totalPrograms");
@@ -396,7 +477,9 @@ function updateUI() {
   const totalLanguagesElem = document.getElementById("totalLanguages");
   if (totalLanguagesElem) totalLanguagesElem.textContent = uniqueLangs;
 
-  const mastery = Math.min(100, Math.round((userPrograms.length / 100) * 100));
+  // Logical 4-year calculation out of 500 programs
+  const mastery = Math.min(100, Math.round((userPrograms.length / TARGET_PROGRAMS_4_YEARS) * 100));
+  
   const masteryPercentElem = document.getElementById("masteryPercent");
   if (masteryPercentElem) masteryPercentElem.textContent = `${mastery}%`;
   
@@ -414,6 +497,10 @@ function updateUI() {
     const circleOffset = 326.7 - (326.7 * mastery) / 100;
     circleFill.style.strokeDashoffset = circleOffset;
   }
+
+  // Active day streak
+  const streakDaysElem = document.getElementById("streakDays");
+  if (streakDaysElem) streakDaysElem.textContent = calculateStreak();
 
   // Recent list
   const recentList = document.getElementById("recentList");
@@ -458,9 +545,7 @@ function updateUI() {
   }
 
   renderLanguages();
-  if (activeLanguageFilter) {
-    selectLanguage(activeLanguageFilter);
-  }
+  if (activeLanguageFilter) selectLanguage(activeLanguageFilter);
   renderHeatmap();
   renderSemesters();
 }
@@ -478,7 +563,7 @@ document.querySelectorAll(".nav-tabs .tab").forEach((btn) => {
   });
 });
 
-// --- RENDER LANGUAGES WITH DIRECT CLICK HANDLERS ---
+// --- RENDER LANGUAGES ---
 function populateLangSelect() {
   if (!progLang) return;
   progLang.innerHTML = "";
@@ -522,10 +607,7 @@ function renderLanguages() {
         </div>
       `;
 
-      card.addEventListener("click", () => {
-        selectLanguage(lang.name);
-      });
-
+      card.addEventListener("click", () => selectLanguage(lang.name));
       return card;
     };
 
@@ -655,20 +737,56 @@ if (deleteCodeBtn) {
   });
 }
 
-// --- HEATMAP & JOURNEY ---
+// --- LOGICAL 364-DAY CONTRIBUTION HEATMAP ---
 function renderHeatmap() {
   const heatmap = document.getElementById("heatmap");
   if (!heatmap) return;
   heatmap.innerHTML = "";
-  for (let i = 0; i < 52 * 7; i++) {
+
+  // Count program uploads per date string (YYYY-MM-DD)
+  const countsByDate = {};
+  userPrograms.forEach((p) => {
+    let dateObj = null;
+    if (p.createdAt?.toDate) {
+      dateObj = p.createdAt.toDate();
+    } else if (p.createdAt?.seconds) {
+      dateObj = new Date(p.createdAt.seconds * 1000);
+    }
+    if (dateObj) {
+      const dateStr = dateObj.toISOString().split("T")[0];
+      countsByDate[dateStr] = (countsByDate[dateStr] || 0) + 1;
+    }
+  });
+
+  const totalDays = 52 * 7; // 364 days
+  const today = new Date();
+
+  for (let i = totalDays - 1; i >= 0; i--) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    const count = countsByDate[dateStr] || 0;
+
     const cell = document.createElement("div");
     cell.className = "heat-cell";
-    if (i % 9 === 0 && userPrograms.length > 0) cell.classList.add("l1");
-    if (i % 25 === 0 && userPrograms.length > 2) cell.classList.add("l3");
+
+    // Set intensity levels based on daily upload volume
+    if (count >= 5) {
+      cell.classList.add("l4");
+    } else if (count >= 3) {
+      cell.classList.add("l3");
+    } else if (count >= 2) {
+      cell.classList.add("l2");
+    } else if (count === 1) {
+      cell.classList.add("l1");
+    }
+
+    cell.title = `${dateStr}: ${count} program${count === 1 ? "" : "s"} uploaded`;
     heatmap.appendChild(cell);
   }
 }
 
+// --- SEMESTER LOGICAL TRACKER ---
 function renderSemesters() {
   const milestones = document.getElementById("semesterMilestones");
   const cards = document.getElementById("semesterCards");
