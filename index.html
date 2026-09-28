@@ -327,9 +327,10 @@
       display: none;
     }
 
+    /* Shifted downward to prevent overlap with audio player and theme switch */
     .app {
       min-height: 100vh;
-      padding: 80px 20px 40px;
+      padding: 110px 20px 40px;
       max-width: 1100px;
       margin: 0 auto;
     }
@@ -780,7 +781,7 @@
 
     @media (max-width: 640px) {
       .hero h1 { font-size: 1.8rem; }
-      .app { padding-top: 100px; }
+      .app { padding-top: 130px; }
       .audio-player {
         max-width: calc(100% - 80px);
         font-size: 0.8rem;
@@ -966,7 +967,6 @@
     </section>
   </main>
 
-  <!-- Upload Meta Modal -->
   <div id="metaModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised">
@@ -1003,7 +1003,6 @@
     </div>
   </div>
 
-  <!-- Code Viewer Modal -->
   <div id="viewerModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised viewer-content">
@@ -1019,7 +1018,6 @@
     </div>
   </div>
 
-  <!-- Add Language Modal -->
   <div id="langModal" class="modal hidden">
     <div class="modal-backdrop"></div>
     <div class="modal-content neo-raised">
