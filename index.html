@@ -7,7 +7,7 @@
   <meta name="referrer" content="strict-origin-when-cross-origin" />
   <title>4-Year BTech CSE Coding Portfolio & Journey Tracker</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg: #e0e5ec;
@@ -17,7 +17,9 @@
       --shadow-dark: #bebebe;
       --accent: #6c5ce7;
       --accent-hover: #5a4bd1;
+      --accent-light: rgba(108, 92, 231, 0.12);
       --success: #00b894;
+      --warning: #fdcb6e;
       --danger: #d63031;
       --radius: 16px;
       --radius-sm: 12px;
@@ -32,6 +34,7 @@
       --shadow-dark: #0d0f12;
       --accent: #a29bfe;
       --accent-hover: #8c7ae6;
+      --accent-light: rgba(162, 155, 254, 0.15);
     }
 
     * {
@@ -328,7 +331,6 @@
       display: none;
     }
 
-    /* Shifted downward to prevent overlap with audio player */
     .app {
       min-height: 100vh;
       padding: 110px 20px 40px;
@@ -403,6 +405,74 @@
       font-weight: 600;
     }
 
+    /* --- DASHBOARD ATTRACTIVE UI ADDITIONS --- */
+    .meme-banner {
+      padding: 24px 28px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .meme-content {
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .meme-badge {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent);
+      background: var(--accent-light);
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 8px;
+    }
+
+    .meme-quote {
+      font-size: 1.15rem;
+      font-weight: 600;
+      line-height: 1.4;
+      margin-bottom: 4px;
+      font-style: italic;
+    }
+
+    .meme-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .meme-action {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badges-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .fun-badge {
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -413,50 +483,92 @@
     .stat-card {
       padding: 22px 16px;
       text-align: center;
+      position: relative;
+      transition: transform var(--transition);
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+    }
+
+    .stat-card .stat-emoji {
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+      display: block;
     }
 
     .stat-value {
       display: block;
-      font-size: 1.8rem;
-      font-weight: 700;
+      font-size: 2rem;
+      font-weight: 800;
       color: var(--accent);
+      letter-spacing: -0.5px;
     }
 
     .stat-label {
-      font-size: 0.8rem;
+      font-size: 0.85rem;
       color: var(--text-muted);
       margin-top: 4px;
+      font-weight: 500;
     }
 
-    .progress-section,
-    .recent-section {
-      padding: 22px;
-      margin-bottom: 20px;
+    .progress-section {
+      padding: 24px;
+      margin-bottom: 24px;
     }
 
-    .progress-section h3,
-    .recent-section h3 {
-      margin-bottom: 14px;
-      font-size: 1.1rem;
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .progress-bar {
-      height: 18px;
+      height: 20px;
       border-radius: 10px;
       overflow: hidden;
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      position: relative;
     }
 
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--accent), #74b9ff);
+      background: linear-gradient(90deg, var(--accent), #00b894);
       border-radius: 10px;
-      transition: width 0.6s ease;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .progress-text {
+    .progress-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 0.85rem;
       color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .recent-section {
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    .recent-section h3 {
+      margin-bottom: 16px;
+      font-size: 1.15rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
 
     .recent-list {
@@ -464,17 +576,20 @@
     }
 
     .recent-list li {
-      padding: 12px 0;
+      padding: 14px 12px;
       border-bottom: 1px solid rgba(128,128,128,0.15);
       display: flex;
       justify-content: space-between;
       align-items: center;
       cursor: pointer;
-      transition: color var(--transition);
+      border-radius: 8px;
+      transition: all var(--transition);
     }
 
     .recent-list li:hover {
+      background: var(--accent-light);
       color: var(--accent);
+      padding-left: 18px;
     }
 
     .recent-list li:last-child {
@@ -484,6 +599,9 @@
     .recent-meta {
       font-size: 0.8rem;
       color: var(--text-muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
     .carousel-wrap {
@@ -579,7 +697,7 @@
     .drop-content code {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.85rem;
-      background: rgba(108, 92, 231, 0.12);
+      background: var(--accent-light);
       padding: 2px 6px;
       border-radius: 4px;
     }
@@ -780,7 +898,7 @@
       color: #cdd6f4;
     }
 
-    /* About Section Styling */
+    /* About Section */
     .about-card {
       padding: 36px 30px;
       margin-bottom: 28px;
@@ -941,35 +1059,83 @@
       <button id="logoutBtn" class="neo-btn danger">Logout</button>
     </header>
 
-    <!-- Dashboard Tab -->
+    <!-- EYE-CATCHY MEME DASHBOARD -->
     <section id="dashboard" class="tab-panel active">
+      <!-- Meme Quote Banner -->
+      <div class="meme-banner neo-raised">
+        <div class="meme-content">
+          <span class="meme-badge">🔥 DAILY DEV VIBES</span>
+          <div class="meme-quote" id="randomMemeQuote">"It works on my machine... and that is all that matters." 🤷‍♂️</div>
+          <span class="meme-sub">Powered by 99% caffeine and 1% stack overflow solutions</span>
+        </div>
+        <div class="meme-action">
+          <button id="nextMemeBtn" class="neo-btn" title="Get another meme quote">🎲 New Quote</button>
+        </div>
+      </div>
+
+      <!-- Fun Gamer / Dev Badges -->
+      <div class="badges-row">
+        <div class="fun-badge neo-inset">☕ Coffee-to-Code: Active</div>
+        <div class="fun-badge neo-inset">🐛 Bug Tamer Lvl 1</div>
+        <div class="fun-badge neo-inset">⚡ 0 Segfaults Today</div>
+        <div class="fun-badge neo-inset">🛡️ Production Protected</div>
+      </div>
+
+      <!-- Attractive Stats Grid -->
       <div class="stats-grid">
         <div class="stat-card neo-raised">
+          <span class="stat-emoji">💻</span>
           <span class="stat-value" id="totalPrograms">0</span>
-          <span class="stat-label">Programs</span>
+          <span class="stat-label">Programs Logged</span>
         </div>
         <div class="stat-card neo-raised">
+          <span class="stat-emoji">🧠</span>
           <span class="stat-value" id="totalLanguages">0</span>
-          <span class="stat-label">Languages</span>
+          <span class="stat-label">Languages Mastered</span>
         </div>
         <div class="stat-card neo-raised">
+          <span class="stat-emoji">🎯</span>
           <span class="stat-value" id="masteryPercent">0%</span>
-          <span class="stat-label">Mastery</span>
+          <span class="stat-label">BTech Mastery</span>
         </div>
         <div class="stat-card neo-raised">
+          <span class="stat-emoji">🔥</span>
           <span class="stat-value" id="streakDays">0</span>
           <span class="stat-label">Day Streak</span>
         </div>
       </div>
+
+      <!-- Quick Action Buttons -->
+      <div class="quick-actions">
+        <button class="neo-btn primary" onclick="document.querySelector('.tab[data-tab=\'upload\']').click();">
+          🚀 Upload New Code
+        </button>
+        <button class="neo-btn" onclick="document.querySelector('.tab[data-tab=\'languages\']').click();">
+          📂 Explore Languages
+        </button>
+        <button class="neo-btn" onclick="document.querySelector('.tab[data-tab=\'tracker\']').click();">
+          📈 View 364-Day Journey
+        </button>
+      </div>
+
+      <!-- RPG-Style Mastery Level Section -->
       <div class="progress-section neo-raised">
-        <h3>Overall Mastery</h3>
+        <div class="progress-header">
+          <h3>🏆 4-Year CSE Quest (500 Programs)</h3>
+          <span id="levelBadge" style="font-size: 0.85rem; font-weight: 700; color: var(--accent);">Level 1: Novice Coder 🐣</span>
+        </div>
         <div class="progress-bar neo-inset">
           <div class="progress-fill" id="masteryBar" style="width: 0%"></div>
         </div>
-        <p class="progress-text"><span id="masteryText">0</span> / 500 programs toward full 4-year mastery</p>
+        <div class="progress-footer">
+          <p><span id="masteryText">0</span> / 500 completed programs</p>
+          <span>Next rank unlocked at 50 programs ⚔️</span>
+        </div>
       </div>
+
+      <!-- Recent Uploads Section -->
       <div class="recent-section neo-raised">
-        <h3>Recent Uploads</h3>
+        <h3>⚡ Fresh Code Drops</h3>
         <ul id="recentList" class="recent-list"></ul>
       </div>
     </section>
@@ -1179,6 +1345,33 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-markup.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+
+  <!-- Interactive Meme Quotes & Level Script -->
+  <script>
+    const devMemeQuotes = [
+      '"It works on my machine... and that is all that matters." 🤷‍♂️',
+      '"There are 10 types of people: those who understand binary, and those who don\'t." 🤖',
+      '"A semicolon a day keeps unemployment away." ;)',
+      '"Real developers test in production." 🚀 (Please don\'t)',
+      '"Debugging: being the detective in a crime movie where you are also the murderer." 🕵️‍♂️',
+      '"Weeks of coding can save you hours of planning." 💡',
+      '"Why do programmers wear glasses? Because they don\'t C#." 👓',
+      '"There is no place like 127.0.0.1" 🏠',
+      '"Git commit -m \'fixed bug, added 3 new ones\'" 📦'
+    ];
+
+    let currentMemeIdx = 0;
+    const memeQuoteElem = document.getElementById('randomMemeQuote');
+    const nextMemeBtn = document.getElementById('nextMemeBtn');
+
+    if (nextMemeBtn && memeQuoteElem) {
+      nextMemeBtn.addEventListener('click', () => {
+        currentMemeIdx = (currentMemeIdx + 1) % devMemeQuotes.length;
+        memeQuoteElem.textContent = devMemeQuotes[currentMemeIdx];
+      });
+    }
+  </script>
+
   <script type="module" src="app.js"></script>
 </body>
 </html>
