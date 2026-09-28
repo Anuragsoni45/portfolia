@@ -63,6 +63,61 @@ if (savedCustomLangs) {
   }
 }
 
+// --- TOUCH HAPTIC & CLICK SOUND SYNTHESIZER ---
+let hapticAudioCtx = null;
+
+function initHapticAudio() {
+  if (!hapticAudioCtx) {
+    hapticAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (hapticAudioCtx.state === "suspended") {
+    hapticAudioCtx.resume();
+  }
+}
+
+function triggerHapticFeedback() {
+  // Physical device vibration (works on Android & supported touch browsers)
+  if ("vibrate" in navigator) {
+    try {
+      navigator.vibrate(12);
+    } catch (e) {}
+  }
+
+  // Synthesize short, gentle mechanical click sound
+  try {
+    initHapticAudio();
+    if (!hapticAudioCtx) return;
+
+    const osc = hapticAudioCtx.createOscillator();
+    const gain = hapticAudioCtx.createGain();
+    const now = hapticAudioCtx.currentTime;
+
+    osc.type = "sine";
+    // Pitch drops quickly to emulate a mechanical key tap
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(140, now + 0.035);
+
+    gain.gain.setValueAtTime(0.18, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+
+    osc.connect(gain);
+    gain.connect(hapticAudioCtx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.035);
+  } catch (e) {
+    // Graceful fallback if audio context isn't permitted yet
+  }
+}
+
+// Universal delegated listener for all buttons, tabs, links, and cards
+document.addEventListener("click", (e) => {
+  const clickable = e.target.closest("button, .neo-btn, .tab, .lang-card, .contact-card, .upload-item, [role='button'], a");
+  if (clickable) {
+    triggerHapticFeedback();
+  }
+}, { passive: true });
+
 // DOM Elements
 const landing = document.getElementById("landing");
 const appSection = document.getElementById("app");
@@ -129,7 +184,6 @@ const muteIcon = document.getElementById("muteIcon");
 const volumeSlider = document.getElementById("volumeSlider");
 const waveVisualizer = document.getElementById("waveVisualizer");
 
-// Musical notes for soft romantic melody (Cmaj7 -> Am7 -> Fmaj7 -> G)
 const romanticChords = [
   [261.63, 329.63, 392.00, 493.88], // Cmaj7 (C4, E4, G4, B4)
   [220.00, 261.63, 329.63, 392.00], // Am7 (A3, C4, E4, G4)
@@ -154,7 +208,6 @@ function playSoftNote(freq, startTime, duration) {
   osc.type = "sine";
   osc.frequency.setValueAtTime(freq, startTime);
 
-  // Smooth warm envelope
   noteGain.gain.setValueAtTime(0, startTime);
   noteGain.gain.linearRampToValueAtTime(0.2, startTime + 0.1);
   noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
@@ -432,7 +485,7 @@ if (closeLangFilterBtn) {
   });
 }
 
-// --- STREAK CALCULATION (LOGICAL) ---
+// --- STREAK CALCULATION ---
 function calculateStreak() {
   if (userPrograms.length === 0) return 0;
 
@@ -449,7 +502,6 @@ function calculateStreak() {
   let currentStreak = 0;
   let checkDate = new Date(today);
 
-  // If haven't uploaded today, check starting from yesterday
   const todayStr = checkDate.toISOString().split("T")[0];
   if (!uploadDates.has(todayStr)) {
     checkDate.setDate(checkDate.getDate() - 1);
@@ -468,7 +520,7 @@ function calculateStreak() {
   return currentStreak;
 }
 
-// --- DASHBOARD & STATS UPDATE ---
+// --- UPDATE UI & LEVEL PROGRESSION ---
 function updateUI() {
   const totalProgramsElem = document.getElementById("totalPrograms");
   if (totalProgramsElem) totalProgramsElem.textContent = userPrograms.length;
@@ -477,7 +529,6 @@ function updateUI() {
   const totalLanguagesElem = document.getElementById("totalLanguages");
   if (totalLanguagesElem) totalLanguagesElem.textContent = uniqueLangs;
 
-  // Logical 4-year calculation out of 500 programs
   const mastery = Math.min(100, Math.round((userPrograms.length / TARGET_PROGRAMS_4_YEARS) * 100));
   
   const masteryPercentElem = document.getElementById("masteryPercent");
@@ -498,7 +549,23 @@ function updateUI() {
     circleFill.style.strokeDashoffset = circleOffset;
   }
 
-  // Active day streak
+  // Developer Level Title
+  const levelBadge = document.getElementById("levelBadge");
+  if (levelBadge) {
+    const count = userPrograms.length;
+    if (count >= 500) {
+      levelBadge.textContent = "Level MAX: 10x Tech Lead 👑";
+    } else if (count >= 250) {
+      levelBadge.textContent = "Level 4: Senior Hacker ⚡";
+    } else if (count >= 100) {
+      levelBadge.textContent = "Level 3: Code Warrior ⚔️";
+    } else if (count >= 50) {
+      levelBadge.textContent = "Level 2: Bug Hunter 🛡️";
+    } else {
+      levelBadge.textContent = "Level 1: Novice Coder 🐣";
+    }
+  }
+
   const streakDaysElem = document.getElementById("streakDays");
   if (streakDaysElem) streakDaysElem.textContent = calculateStreak();
 
@@ -507,7 +574,7 @@ function updateUI() {
   if (recentList) {
     recentList.innerHTML = "";
     if (userPrograms.length === 0) {
-      recentList.innerHTML = `<li style="color: var(--text-muted); cursor: default;">No uploads yet. Go to the Upload tab to add your first file!</li>`;
+      recentList.innerHTML = `<li style="color: var(--text-muted); cursor: default;">No uploads yet. Hit <strong>Upload New Code</strong> to get started!</li>`;
     } else {
       userPrograms.slice(0, 5).forEach((prog) => {
         const li = document.createElement("li");
@@ -521,7 +588,7 @@ function updateUI() {
     }
   }
 
-  // Render Upload Tab List
+  // Upload Tab List
   const uploadList = document.getElementById("uploadList");
   if (uploadList) {
     uploadList.innerHTML = "";
@@ -743,7 +810,6 @@ function renderHeatmap() {
   if (!heatmap) return;
   heatmap.innerHTML = "";
 
-  // Count program uploads per date string (YYYY-MM-DD)
   const countsByDate = {};
   userPrograms.forEach((p) => {
     let dateObj = null;
@@ -758,7 +824,7 @@ function renderHeatmap() {
     }
   });
 
-  const totalDays = 52 * 7; // 364 days
+  const totalDays = 52 * 7;
   const today = new Date();
 
   for (let i = totalDays - 1; i >= 0; i--) {
@@ -770,7 +836,6 @@ function renderHeatmap() {
     const cell = document.createElement("div");
     cell.className = "heat-cell";
 
-    // Set intensity levels based on daily upload volume
     if (count >= 5) {
       cell.classList.add("l4");
     } else if (count >= 3) {
